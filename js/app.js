@@ -4,11 +4,12 @@
    ------------------------------------------------------------
    Sections:
      1. Constants & defaults
-     2. Date helpers
-     3. State (load / save / normalize)
-     4. Calculations (schedule, stats, streak)
-     5. Rendering (dashboard, history, calendar, stats, settings)
-     6. Actions & event wiring
+     2. Translations (English / O'zbek)
+     3. Date helpers
+     4. State (load / save / normalize)
+     5. Calculations (schedule, stats, streak)
+     6. Rendering (dashboard, history, calendar, stats, settings)
+     7. Actions & event wiring
    ============================================================ */
 (function () {
   'use strict';
@@ -19,17 +20,7 @@
   const DAY_MS = 24 * 60 * 60 * 1000;
 
   // Monday-first week. `id` is JS Date.getDay() (0 = Sunday).
-  const WEEKDAYS = [
-    { id: 1, short: 'Mon', letter: 'M', long: 'Monday' },
-    { id: 2, short: 'Tue', letter: 'T', long: 'Tuesday' },
-    { id: 3, short: 'Wed', letter: 'W', long: 'Wednesday' },
-    { id: 4, short: 'Thu', letter: 'T', long: 'Thursday' },
-    { id: 5, short: 'Fri', letter: 'F', long: 'Friday' },
-    { id: 6, short: 'Sat', letter: 'S', long: 'Saturday' },
-    { id: 0, short: 'Sun', letter: 'S', long: 'Sunday' },
-  ];
-  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
-    'August', 'September', 'October', 'November', 'December'];
+  const WEEKDAY_IDS = [1, 2, 3, 4, 5, 6, 0];
 
   const DEFAULT_SETTINGS = {
     courseName: 'Study Course',
@@ -40,15 +31,272 @@
     endDateMode: 'auto',      // 'auto' = computed from schedule, 'manual' = endDate below
     endDate: '',
     appearance: 'system',     // 'system' | 'light' | 'dark'
+    lang: 'en',               // 'en' | 'uz'
   };
 
-  /* ---------- 2. Date helpers (all local-time, ISO "YYYY-MM-DD") ---------- */
+  /* ---------- 2. Translations ---------- */
+  const L = {
+    en: {
+      months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+      monthsShort: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      weekdays: { 1: ['Mon', 'Monday', 'M'], 2: ['Tue', 'Tuesday', 'T'], 3: ['Wed', 'Wednesday', 'W'], 4: ['Thu', 'Thursday', 'T'], 5: ['Fri', 'Friday', 'F'], 6: ['Sat', 'Saturday', 'S'], 0: ['Sun', 'Sunday', 'S'] },
+      unit: { lesson: ['lesson', 'lessons'], hour: ['hour', 'hours'], day: ['day', 'days'], week: ['week', 'weeks'], month: ['month', 'months'] },
+      tabs: { dashboard: 'Home', history: 'History', calendar: 'Calendar', stats: 'Stats', settings: 'Settings' },
+
+      welcomeTitle: '👋 Welcome!',
+      welcomeText: 'This app counts your lessons for you. After each lesson, tap the big <b>Complete Lesson</b> button — remaining lessons, hours and the course end date update automatically.',
+      welcomeHint: 'You can change the course name, start date and lesson days in <b>Settings</b>.',
+      gotIt: 'Got it',
+      switchLang: "O'zbekcha",
+
+      started: 'Started {date}',
+      courseProgress: 'Course progress',
+      lessonsLeftHoursLeft: '{lessons} · {hours} to go',
+      totalLessons: 'Total lessons',
+      lessonsRemaining: 'Lessons remaining',
+      lessonsCompleted: 'Lessons completed',
+      hoursRemaining: 'Hours remaining',
+      hours: 'hours',
+      courseEnds: 'Course ends',
+      timeRemaining: 'Time remaining',
+      ended: 'Ended',
+      endedHint: 'Course period is over',
+      nextLesson: 'Next lesson',
+      finished: 'Finished',
+      allDone: 'All lessons done',
+      noDaysLeft: 'No scheduled days left',
+      lessonN: 'Lesson #{n}',
+      onTrack: 'On track',
+      ahead: '{n} ahead',
+      behind: '{n} behind',
+      startsIn: 'Starts in {n}',
+      courseCompletedPill: 'Course completed',
+      completeLesson: 'Complete Lesson',
+      completeHint: 'Tap once after each finished lesson',
+      courseCompleted: 'Course Completed',
+      lessonsOf: '{a} / {b} lessons',
+      hoursOf: '{a} / {b} hours',
+      pctCompleted: '{p} completed',
+      lastCompleted: 'Last completed: Lesson #{n} · {date}',
+      toastDone: 'Lesson #{n} completed · {left} left',
+      toastAllDone: '🎉 Lesson #{n} — course completed!',
+      undo: 'Undo',
+      keepOneDay: 'Keep at least one study day',
+
+      history: 'History',
+      historySub: '{lessons} completed · {hours}',
+      undoLast: 'Undo last completion',
+      historyEmpty: 'No lessons completed yet.',
+      historyEmptyHint: 'After each lesson, tap <b>Complete Lesson</b> on the Home tab.',
+      completed: 'Completed',
+      remove: 'Remove',
+      historyHint: 'Tap a date to change it. "Remove" deletes a lesson you completed by mistake.',
+      removeConfirm: 'Remove Lesson #{n} from history?',
+
+      calendar: 'Calendar',
+      calendarSub: 'Lesson days are marked. Tap a day for details.',
+      today: 'Today',
+      upcoming: 'Upcoming',
+      missed: 'Missed',
+      calCompleted: '✓ Completed — {list}',
+      calMissed: 'Lesson #{n} was scheduled — not completed',
+      calUpcoming: '○ Upcoming — Lesson #{n}',
+      calNone: 'No lesson on this day',
+
+      stats: 'Statistics',
+      progress: 'Progress',
+      lessons: 'Lessons',
+      hoursTitle: 'Hours',
+      time: 'Time',
+      completedLessons: 'Completed lessons',
+      remainingLessons: 'Remaining lessons',
+      completionPct: 'Completion percentage',
+      expectedByToday: 'Should be done by today',
+      expectedHint: 'According to your schedule',
+      totalHours: 'Total hours',
+      completedHours: 'Completed hours',
+      remainingHours: 'Remaining hours',
+      streak: 'Current streak',
+      streakHint: 'Lesson days completed in a row',
+      daysRemaining: 'Course days remaining',
+      weeksRemaining: 'Weeks remaining',
+
+      settings: 'Settings',
+      settingsSub: 'Changes are saved automatically.',
+      course: 'Course',
+      courseName: 'Course name',
+      startDate: 'Start date',
+      startDateHint: 'The day of your first lesson',
+      totalLessonsHint: 'Cannot be less than completed ({n})',
+      lessonDuration: 'Lesson duration',
+      lessonDurationHint: 'Hours per lesson',
+      weeklySchedule: 'Weekly schedule',
+      studyDays: 'Study days',
+      studyDaysHint: 'Tap the days you have lessons',
+      lessonsPerWeek: 'Lessons per week',
+      courseEndDate: 'Course end date',
+      autoEnd: 'Calculate automatically',
+      autoEndHint: 'From start date, study days and total lessons',
+      language: 'Language',
+      appearance: 'Appearance',
+      system: 'System', light: 'Light', dark: 'Dark',
+      data: 'Your data',
+      exportBackup: 'Save a backup',
+      importBackup: 'Restore from backup',
+      dataHint: 'Everything is stored only on this phone. Save a backup before deleting the app or changing phones.',
+      resetTitle: 'Start over',
+      resetProgress: 'Clear completed lessons',
+      resetAll: 'Reset everything to defaults',
+      resetProgressConfirm: 'Delete all completed lessons? Your settings will be kept.',
+      resetAllConfirm: 'Reset everything to defaults? This cannot be undone.',
+      importConfirm: 'Replace current data with this backup?',
+      importOk: 'Backup restored',
+      importBad: 'Could not read this backup file',
+      about: 'About',
+      version: 'Version',
+      install: 'Install on iPhone',
+      installHint: 'Safari → Share → Add to Home Screen',
+      showWelcome: 'Show the welcome tips again',
+    },
+    uz: {
+      months: ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'],
+      monthsShort: ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'],
+      weekdays: { 1: ['Du', 'Dushanba', 'D'], 2: ['Se', 'Seshanba', 'S'], 3: ['Ch', 'Chorshanba', 'C'], 4: ['Pa', 'Payshanba', 'P'], 5: ['Ju', 'Juma', 'J'], 6: ['Sh', 'Shanba', 'S'], 0: ['Ya', 'Yakshanba', 'Y'] },
+      unit: { lesson: ['dars', 'dars'], hour: ['soat', 'soat'], day: ['kun', 'kun'], week: ['hafta', 'hafta'], month: ['oy', 'oy'] },
+      tabs: { dashboard: 'Asosiy', history: 'Tarix', calendar: 'Kalendar', stats: 'Statistika', settings: 'Sozlamalar' },
+
+      welcomeTitle: '👋 Xush kelibsiz!',
+      welcomeText: "Bu ilova darslaringizni o'zi sanaydi. Har dars tugagach katta <b>Darsni tugatdim</b> tugmasini bosing — qolgan darslar, soatlar va kurs tugash sanasi avtomatik yangilanadi.",
+      welcomeHint: "Kurs nomi, boshlanish sanasi va dars kunlarini <b>Sozlamalar</b>da o'zgartirish mumkin.",
+      gotIt: 'Tushundim',
+      switchLang: 'English',
+
+      started: '{date} dan boshlangan',
+      courseProgress: 'Kurs jarayoni',
+      lessonsLeftHoursLeft: '{lessons} · {hours} qoldi',
+      totalLessons: 'Jami darslar',
+      lessonsRemaining: 'Qolgan darslar',
+      lessonsCompleted: "O'tilgan darslar",
+      hoursRemaining: 'Qolgan soatlar',
+      hours: 'soat',
+      courseEnds: 'Kurs tugaydi',
+      timeRemaining: 'Qolgan vaqt',
+      ended: 'Tugadi',
+      endedHint: 'Kurs muddati tugagan',
+      nextLesson: 'Keyingi dars',
+      finished: 'Tugallandi',
+      allDone: 'Barcha darslar o\'tildi',
+      noDaysLeft: 'Rejalashtirilgan kun qolmadi',
+      lessonN: '{n}-dars',
+      onTrack: 'Jadval bo\'yicha',
+      ahead: '{n} oldinda',
+      behind: '{n} orqada',
+      startsIn: '{n}dan keyin boshlanadi',
+      courseCompletedPill: 'Kurs tugallandi',
+      completeLesson: 'Darsni tugatdim',
+      completeHint: 'Har dars tugagach bir marta bosing',
+      courseCompleted: 'Kurs tugallandi',
+      lessonsOf: '{a} / {b} dars',
+      hoursOf: '{a} / {b} soat',
+      pctCompleted: '{p} bajarildi',
+      lastCompleted: 'Oxirgi dars: {n}-dars · {date}',
+      toastDone: '{n}-dars tugatildi · {left} qoldi',
+      toastAllDone: '🎉 {n}-dars — kurs tugallandi!',
+      undo: 'Bekor qilish',
+      keepOneDay: 'Kamida bitta dars kuni qolsin',
+
+      history: 'Tarix',
+      historySub: '{lessons} o\'tildi · {hours}',
+      undoLast: 'Oxirgi darsni bekor qilish',
+      historyEmpty: 'Hali dars tugatilmagan.',
+      historyEmptyHint: 'Har dars tugagach Asosiy sahifadagi <b>Darsni tugatdim</b> tugmasini bosing.',
+      completed: 'Tugallandi',
+      remove: "O'chirish",
+      historyHint: "Sanani o'zgartirish uchun uni bosing. Xato bosilgan darsni «O'chirish» bilan olib tashlang.",
+      removeConfirm: '{n}-darsni tarixdan o\'chirasizmi?',
+
+      calendar: 'Kalendar',
+      calendarSub: 'Dars kunlari belgilangan. Batafsil uchun kunni bosing.',
+      today: 'Bugun',
+      upcoming: 'Kelgusi',
+      missed: "O'tkazilgan",
+      calCompleted: '✓ Tugallangan — {list}',
+      calMissed: '{n}-dars rejalashtirilgan edi — tugatilmagan',
+      calUpcoming: '○ Kelgusi — {n}-dars',
+      calNone: 'Bu kunda dars yo\'q',
+
+      stats: 'Statistika',
+      progress: 'Jarayon',
+      lessons: 'Darslar',
+      hoursTitle: 'Soatlar',
+      time: 'Vaqt',
+      completedLessons: "O'tilgan darslar",
+      remainingLessons: 'Qolgan darslar',
+      completionPct: 'Bajarilgan foiz',
+      expectedByToday: 'Bugungacha bo\'lishi kerak',
+      expectedHint: 'Jadval bo\'yicha',
+      totalHours: 'Jami soat',
+      completedHours: "O'tilgan soat",
+      remainingHours: 'Qolgan soat',
+      streak: 'Ketma-ketlik',
+      streakHint: 'Ketma-ket tugatilgan dars kunlari',
+      daysRemaining: 'Kurs tugashiga kun',
+      weeksRemaining: 'Qolgan haftalar',
+
+      settings: 'Sozlamalar',
+      settingsSub: "O'zgarishlar avtomatik saqlanadi.",
+      course: 'Kurs',
+      courseName: 'Kurs nomi',
+      startDate: 'Boshlanish sanasi',
+      startDateHint: 'Birinchi dars kuni',
+      totalLessonsHint: "O'tilganlardan ({n}) kam bo'lishi mumkin emas",
+      lessonDuration: 'Dars davomiyligi',
+      lessonDurationHint: 'Bir dars necha soat',
+      weeklySchedule: 'Haftalik jadval',
+      studyDays: 'Dars kunlari',
+      studyDaysHint: 'Dars bo\'ladigan kunlarni bosing',
+      lessonsPerWeek: 'Haftasiga darslar',
+      courseEndDate: 'Kurs tugash sanasi',
+      autoEnd: 'Avtomatik hisoblash',
+      autoEndHint: 'Boshlanish sanasi, dars kunlari va darslar sonidan',
+      language: 'Til',
+      appearance: "Ko'rinish",
+      system: 'Tizim', light: 'Yorug\'', dark: 'Qorong\'i',
+      data: "Ma'lumotlar",
+      exportBackup: 'Nusxa saqlash',
+      importBackup: 'Nusxadan tiklash',
+      dataHint: "Hamma narsa faqat shu telefonda saqlanadi. Ilovani o'chirishdan yoki telefon almashtirishdan oldin nusxa saqlang.",
+      resetTitle: 'Qaytadan boshlash',
+      resetProgress: "O'tilgan darslarni tozalash",
+      resetAll: "Hammasini boshlang'ich holatga qaytarish",
+      resetProgressConfirm: "Barcha o'tilgan darslar o'chirilsinmi? Sozlamalar saqlanib qoladi.",
+      resetAllConfirm: "Hammasi boshlang'ich holatga qaytarilsinmi? Buni bekor qilib bo'lmaydi.",
+      importConfirm: "Hozirgi ma'lumotlar nusxadagi bilan almashtirilsinmi?",
+      importOk: 'Nusxa tiklandi',
+      importBad: "Bu faylni o'qib bo'lmadi",
+      about: 'Ilova haqida',
+      version: 'Versiya',
+      install: "iPhone'ga o'rnatish",
+      installHint: 'Safari → Ulashish → Add to Home Screen',
+      showWelcome: "Boshlang'ich maslahatlarni yana ko'rsatish",
+    },
+  };
+
+  let lang = 'en';
+  const T = () => L[lang];
+  function t(key, vars) {
+    let s = T()[key];
+    if (s === undefined) s = L.en[key] !== undefined ? L.en[key] : key;
+    if (vars) for (const k in vars) s = s.split(`{${k}}`).join(vars[k]);
+    return s;
+  }
+  // "3 lessons" / "3 dars"
+  const cnt = (n, unit) => `${n} ${T().unit[unit][n === 1 ? 0 : 1]}`;
+
+  /* ---------- 3. Date helpers (all local-time, ISO "YYYY-MM-DD") ---------- */
   const pad = (n) => String(n).padStart(2, '0');
   const toISO = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const parseISO = (s) => {
-    const [y, m, d] = s.split('-').map(Number);
-    return new Date(y, m - 1, d);
-  };
+  const parseISO = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
   const todayISO = () => toISO(new Date());
   const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
   const daysBetween = (aISO, bISO) => Math.round((parseISO(bISO) - parseISO(aISO)) / DAY_MS);
@@ -60,29 +308,17 @@
     if (b.getDate() < a.getDate()) months -= 1;
     return Math.max(0, months);
   }
-  const fmtLong = (iso) => { const d = parseISO(iso); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
-  const fmtShort = (iso) => { const d = parseISO(iso); return `${pad(d.getDate())} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`; };
-  const fmtDay = (iso) => {
-    const d = parseISO(iso);
-    const wd = WEEKDAYS.find((w) => w.id === d.getDay()).short;
-    return `${wd}, ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`;
-  };
-  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  const fmtLong = (iso) => { const d = parseISO(iso); return `${d.getDate()} ${T().months[d.getMonth()]} ${d.getFullYear()}`; };
+  const fmtShort = (iso) => { const d = parseISO(iso); return `${pad(d.getDate())} ${T().monthsShort[d.getMonth()]} ${d.getFullYear()}`; };
+  const fmtDay = (iso) => { const d = parseISO(iso); return `${T().weekdays[d.getDay()][0]}, ${d.getDate()} ${T().monthsShort[d.getMonth()]}`; };
   const fmtNum = (n) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100));
   const fmtPct = (p) => (Number.isInteger(p) ? `${p}%` : `${p.toFixed(1)}%`);
+  const wd = (id) => T().weekdays[id];
 
-  /* ---------- 3. State ---------- */
+  /* ---------- 4. State ---------- */
   const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-  const clampInt = (v, min, max, fallback) => {
-    const n = parseInt(v, 10);
-    if (isNaN(n)) return fallback;
-    return Math.min(max, Math.max(min, n));
-  };
-  const clampNum = (v, min, max, fallback) => {
-    const n = parseFloat(v);
-    if (isNaN(n)) return fallback;
-    return Math.min(max, Math.max(min, n));
-  };
+  const clampInt = (v, min, max, fallback) => { const n = parseInt(v, 10); return isNaN(n) ? fallback : Math.min(max, Math.max(min, n)); };
+  const clampNum = (v, min, max, fallback) => { const n = parseFloat(v); return isNaN(n) ? fallback : Math.min(max, Math.max(min, n)); };
 
   function normalize(obj) {
     const s = Object.assign({}, DEFAULT_SETTINGS, (obj && obj.settings) || {});
@@ -97,6 +333,7 @@
     s.endDateMode = s.endDateMode === 'manual' && isValidISO(s.endDate) ? 'manual' : 'auto';
     if (!isValidISO(s.endDate)) s.endDate = '';
     if (!['system', 'light', 'dark'].includes(s.appearance)) s.appearance = 'system';
+    if (!L[s.lang]) s.lang = 'en';
 
     const completions = (Array.isArray(obj && obj.completions) ? obj.completions : [])
       .filter((c) => c && isValidISO(c.date))
@@ -106,22 +343,16 @@
   }
 
   function loadState() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return normalize(JSON.parse(raw));
-    } catch (e) { /* corrupted storage: fall through to defaults */ }
+    try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) return normalize(JSON.parse(raw)); }
+    catch (e) { /* corrupted storage: fall through to defaults */ }
     return normalize({});
   }
-  function saveState() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* storage full / private mode */ }
-  }
+  function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ } }
   function loadUI() {
-    try { return Object.assign({ tab: 'dashboard' }, JSON.parse(localStorage.getItem(UI_KEY) || '{}')); }
-    catch (e) { return { tab: 'dashboard' }; }
+    try { return Object.assign({ tab: 'dashboard', welcomeDone: false }, JSON.parse(localStorage.getItem(UI_KEY) || '{}')); }
+    catch (e) { return { tab: 'dashboard', welcomeDone: false }; }
   }
-  function saveUI() {
-    try { localStorage.setItem(UI_KEY, JSON.stringify({ tab: ui.tab })); } catch (e) { /* ignore */ }
-  }
+  function saveUI() { try { localStorage.setItem(UI_KEY, JSON.stringify({ tab: ui.tab, welcomeDone: ui.welcomeDone })); } catch (e) { /* ignore */ } }
 
   let state = loadState();
   const ui = loadUI();
@@ -130,7 +361,7 @@
   ui.calMonth = now.getMonth();
   ui.calSelected = null;
 
-  /* ---------- 4. Calculations ---------- */
+  /* ---------- 5. Calculations ---------- */
 
   // The dates on which lesson #1 … #total are scheduled, given the study days.
   function scheduleDates(s) {
@@ -198,7 +429,7 @@
     };
   }
 
-  /* ---------- 5. Rendering ---------- */
+  /* ---------- 6. Rendering ---------- */
   const $ = (sel) => document.querySelector(sel);
   const esc = (str) => String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -209,6 +440,8 @@
   }
 
   function render() {
+    lang = state.settings.lang;
+    document.documentElement.lang = lang;
     applyAppearance();
     const st = computeStats();
     const view = $('#view');
@@ -216,7 +449,10 @@
     view.innerHTML = (renderers[ui.tab] || renderDashboard)(st);
     view.classList.toggle('has-action', ui.tab === 'dashboard' && !st.isDone);
     renderActionBar(st);
-    document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.tab === ui.tab));
+    document.querySelectorAll('.tab').forEach((el) => {
+      el.classList.toggle('on', el.dataset.tab === ui.tab);
+      el.querySelector('span').textContent = T().tabs[el.dataset.tab];
+    });
   }
 
   function progressBar(st) {
@@ -226,79 +462,99 @@
   }
 
   function paceLabel(st) {
-    if (st.isDone) return '<span class="pill green">Course completed</span>';
-    if (!st.started) return `<span class="pill accent">Starts in ${plural(daysBetween(st.today, state.settings.startDate), 'day')}</span>`;
+    if (st.isDone) return `<span class="pill green">${t('courseCompletedPill')}</span>`;
+    if (!st.started) return `<span class="pill accent">${t('startsIn', { n: cnt(daysBetween(st.today, state.settings.startDate), 'day') })}</span>`;
     const diff = st.completed - st.expectedByToday;
-    if (diff === 0) return '<span class="pill green">On track</span>';
-    if (diff > 0) return `<span class="pill accent">${plural(diff, 'lesson')} ahead</span>`;
-    return `<span class="pill orange">${plural(-diff, 'lesson')} behind</span>`;
+    if (diff === 0) return `<span class="pill green">${t('onTrack')}</span>`;
+    if (diff > 0) return `<span class="pill accent">${t('ahead', { n: cnt(diff, 'lesson') })}</span>`;
+    return `<span class="pill orange">${t('behind', { n: cnt(-diff, 'lesson') })}</span>`;
+  }
+
+  function welcomeCard() {
+    if (ui.welcomeDone) return '';
+    return `
+      <div class="card welcome">
+        <h2>${t('welcomeTitle')}</h2>
+        <p>${t('welcomeText')}</p>
+        <p class="muted">${t('welcomeHint')}</p>
+        <div class="btn-row">
+          <button class="btn btn-primary small" data-action="welcome-done">${t('gotIt')}</button>
+          <button class="btn btn-secondary small" data-action="switch-lang">🌐 ${t('switchLang')}</button>
+        </div>
+      </div>`;
   }
 
   function renderDashboard(st) {
     const s = state.settings;
-    const days = WEEKDAYS.filter((w) => s.studyDays.includes(w.id)).map((w) => w.short).join(', ');
+    const days = s.studyDays.length === 7 ? '' : ' · ' + WEEKDAY_IDS.filter((id) => s.studyDays.includes(id)).map((id) => wd(id)[0]).join(', ');
 
     const heroOrCelebrate = st.isDone
       ? `<div class="card celebrate">
            <div class="emoji">🎉</div>
-           <h2>Course Completed</h2>
-           <p class="num">${st.total} / ${st.total} lessons</p>
-           <p class="num">${fmtNum(st.completedHours)} / ${fmtNum(st.totalHours)} hours</p>
-           <p>100% completed</p>
+           <h2>${t('courseCompleted')}</h2>
+           <p class="num">${t('lessonsOf', { a: st.total, b: st.total })}</p>
+           <p class="num">${t('hoursOf', { a: fmtNum(st.completedHours), b: fmtNum(st.totalHours) })}</p>
+           <p>${t('pctCompleted', { p: '100%' })}</p>
          </div>`
       : `<div class="card hero">
            <div class="hero-top">
              <div>
-               <div class="card-label">Course progress</div>
+               <div class="card-label">${t('courseProgress')}</div>
                <div class="hero-value num">${st.completed}<small> / ${st.total}</small></div>
              </div>
              <div class="hero-pct num">${fmtPct(st.percent)}</div>
            </div>
            ${progressBar(st)}
            <div class="progress-row">
-             <span><b class="num">${st.remaining}</b> lessons left</span>
-             <span><b class="num">${fmtNum(st.remainingHours)}h</b> left</span>
+             <span class="num">${t('lessonsLeftHoursLeft', { lessons: `<b>${cnt(st.remaining, 'lesson')}</b>`, hours: `<b>${cnt(fmtNum(st.remainingHours), 'hour')}</b>` })}</span>
+             ${paceLabel(st)}
            </div>
          </div>`;
 
     const timeRemaining = st.daysRemaining === 0
-      ? `<div class="ends-remaining">Ended</div><div class="ends-detail">Course period is over</div>`
-      : `<div class="ends-remaining num">${st.monthsRemaining >= 1 ? plural(st.monthsRemaining, 'month') : plural(st.weeksRemaining, 'week')}</div>
-         <div class="ends-detail num">${plural(st.weeksRemaining, 'week')} · ${plural(st.daysRemaining, 'day')}</div>`;
+      ? `<div class="ends-remaining">${t('ended')}</div><div class="ends-detail">${t('endedHint')}</div>`
+      : `<div class="ends-remaining num">${st.monthsRemaining >= 1 ? cnt(st.monthsRemaining, 'month') : cnt(st.weeksRemaining, 'week')}</div>
+         <div class="ends-detail num">${cnt(st.weeksRemaining, 'week')} · ${cnt(st.daysRemaining, 'day')}</div>`;
+
+    const nextText = st.isDone ? t('allDone')
+      : st.nextLessonDate ? `${fmtDay(st.nextLessonDate)} · ${t('lessonN', { n: st.completed + 1 })}`
+      : t('noDaysLeft');
 
     return `
       <h1 class="large-title">📚 ${esc(s.courseName)}</h1>
-      <p class="subtitle">Started ${fmtShort(s.startDate)} · ${esc(days)}</p>
+      <p class="subtitle">${t('started', { date: fmtShort(s.startDate) })}${esc(days)}</p>
 
+      ${welcomeCard()}
       ${heroOrCelebrate}
 
       <div class="grid-2">
-        <div class="card"><div class="tile-value num">${st.total}</div><div class="tile-label">Total lessons</div></div>
-        <div class="card"><div class="tile-value num accent">${st.remaining}</div><div class="tile-label">Lessons remaining</div></div>
-        <div class="card"><div class="tile-value num green">${st.completed}</div><div class="tile-label">Lessons completed</div></div>
-        <div class="card"><div class="tile-value num">${fmtNum(st.remainingHours)}<small>hours</small></div><div class="tile-label">Hours remaining</div></div>
+        <div class="card"><div class="tile-value num">${st.total}</div><div class="tile-label">${t('totalLessons')}</div></div>
+        <div class="card"><div class="tile-value num accent">${st.remaining}</div><div class="tile-label">${t('lessonsRemaining')}</div></div>
+        <div class="card"><div class="tile-value num green">${st.completed}</div><div class="tile-label">${t('lessonsCompleted')}</div></div>
+        <div class="card"><div class="tile-value num">${fmtNum(st.remainingHours)}<small>${t('hours')}</small></div><div class="tile-label">${t('hoursRemaining')}</div></div>
       </div>
 
-      <div class="card ends-card">
-        <div class="left">
-          <div class="card-label">Course ends</div>
-          <div class="ends-date">${fmtLong(st.endDate)}</div>
+      <div class="card">
+        <div class="ends-card">
+          <div class="left">
+            <div class="card-label">${t('courseEnds')}</div>
+            <div class="ends-date">${fmtLong(st.endDate)}</div>
+          </div>
+          <div class="right">
+            <div class="card-label">${t('timeRemaining')}</div>
+            ${timeRemaining}
+          </div>
         </div>
-        <div class="right">
-          <div class="card-label">Time remaining</div>
-          ${timeRemaining}
+        <div class="divider"></div>
+        <div class="next-row">
+          <div>
+            <div class="lbl">${st.isDone ? t('finished') : t('nextLesson')}</div>
+            <div class="val">${nextText}</div>
+          </div>
         </div>
       </div>
 
-      <div class="card next-row">
-        <div>
-          <div class="lbl">${st.isDone ? 'Finished' : 'Next lesson'}</div>
-          <div class="val">${st.isDone ? 'All lessons done' : (st.nextLessonDate ? `${fmtDay(st.nextLessonDate)} · Lesson #${st.completed + 1}` : 'No scheduled days left')}</div>
-        </div>
-        ${paceLabel(st)}
-      </div>
-
-      ${st.lastCompletion ? `<p class="footnote">Last completed: Lesson #${state.completions.length} · ${fmtShort(st.lastCompletion.date)}</p>` : ''}
+      ${st.lastCompletion ? `<p class="footnote">${t('lastCompleted', { n: state.completions.length, date: fmtShort(st.lastCompletion.date) })}</p>` : ''}
     `;
   }
 
@@ -306,31 +562,31 @@
     const bar = $('#actionBar');
     if (ui.tab !== 'dashboard' || st.isDone) { bar.hidden = true; bar.innerHTML = ''; return; }
     bar.hidden = false;
-    bar.innerHTML = `<div class="inner"><button class="btn btn-primary" data-action="complete">✓&nbsp; Complete Lesson</button></div>`;
+    bar.innerHTML = `<div class="inner">
+      <button class="btn btn-primary" data-action="complete">✓&nbsp; ${t('completeLesson')}</button>
+      <div class="action-hint">${t('completeHint')}</div>
+    </div>`;
   }
 
   function renderHistory(st) {
     const items = state.completions.map((c, i) => ({ ...c, n: i + 1 })).reverse();
     const list = items.length
       ? `<div class="group">${items.map((c) => `
-          <div class="row hist-row" data-id="${c.id}">
+          <div class="row hist-row">
             <div class="row-label">
-              <div class="lesson">Lesson #${c.n}</div>
-              <input class="date-input" type="date" value="${c.date}" data-action="edit-date" data-id="${c.id}" aria-label="Completion date">
+              <div class="lesson">${t('lessonN', { n: c.n })} <span class="badge">${t('completed')}</span></div>
+              <label class="date-wrap">📅 <input class="date-input" type="date" value="${c.date}" data-action="edit-date" data-id="${c.id}" aria-label="Completion date"></label>
             </div>
-            <span class="badge">Completed</span>
-            <button class="icon-btn danger" data-action="remove" data-id="${c.id}" aria-label="Remove completion">
-              <svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
-            </button>
+            <button class="text-btn danger" data-action="remove" data-id="${c.id}">${t('remove')}</button>
           </div>`).join('')}</div>`
-      : `<div class="card empty"><div class="big">📖</div>No lessons completed yet.<br>Tap <b>Complete Lesson</b> on the Home tab after each lesson.</div>`;
+      : `<div class="card empty"><div class="big">📖</div><b>${t('historyEmpty')}</b><br>${t('historyEmptyHint')}</div>`;
 
     return `
-      <h1 class="large-title">History</h1>
-      <p class="subtitle num">${plural(st.completed, 'lesson')} completed · ${fmtNum(st.completedHours)} hours</p>
-      ${items.length ? `<button class="btn btn-secondary" data-action="undo" style="margin-bottom:12px">↩︎&nbsp; Undo last completion</button>` : ''}
+      <h1 class="large-title">${t('history')}</h1>
+      <p class="subtitle num">${t('historySub', { lessons: cnt(st.completed, 'lesson'), hours: cnt(fmtNum(st.completedHours), 'hour') })}</p>
+      ${items.length ? `<button class="btn btn-secondary" data-action="undo" style="margin-bottom:12px">↩︎&nbsp; ${t('undoLast')}</button>` : ''}
       ${list}
-      ${items.length ? `<p class="footnote">Tap a date to change it. Use the trash icon to remove a completion made by mistake.</p>` : ''}
+      ${items.length ? `<p class="footnote">${t('historyHint')}</p>` : ''}
     `;
   }
 
@@ -360,32 +616,32 @@
       const doneHere = state.completions.map((c, i) => ({ ...c, n: i + 1 })).filter((c) => c.date === iso);
       const n = scheduleIndex.get(iso);
       let status;
-      if (doneHere.length) status = `✓ Completed — ${doneHere.map((c) => `Lesson #${c.n}`).join(', ')}`;
-      else if (n) status = iso < st.today ? `Scheduled lesson #${n} — not completed` : `○ Upcoming — Lesson #${n}`;
-      else status = 'No lesson scheduled';
+      if (doneHere.length) status = t('calCompleted', { list: doneHere.map((c) => t('lessonN', { n: c.n })).join(', ') });
+      else if (n) status = iso < st.today ? t('calMissed', { n }) : t('calUpcoming', { n });
+      else status = t('calNone');
       detail = `<div class="card cal-detail"><div class="d">${fmtLong(iso)}</div><div class="s">${status}</div></div>`;
     }
 
     return `
-      <h1 class="large-title">Calendar</h1>
-      <p class="subtitle">Lesson days are marked. Tap a day for details.</p>
+      <h1 class="large-title">${t('calendar')}</h1>
+      <p class="subtitle">${t('calendarSub')}</p>
       <div class="card">
         <div class="cal-head">
-          <h2>${MONTHS[m]} ${y}</h2>
+          <h2>${T().months[m]} ${y}</h2>
           <div class="cal-nav">
-            <button class="today-btn" data-action="cal-today">Today</button>
+            <button class="today-btn" data-action="cal-today">${t('today')}</button>
             <button class="icon-btn" data-action="cal-prev" aria-label="Previous month"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
             <button class="icon-btn" data-action="cal-next" aria-label="Next month"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
           </div>
         </div>
         <div class="cal-grid">
-          ${WEEKDAYS.map((w) => `<div class="cal-dow">${w.short}</div>`).join('')}
+          ${WEEKDAY_IDS.map((id) => `<div class="cal-dow">${wd(id)[0]}</div>`).join('')}
           ${cells}
         </div>
         <div class="legend">
-          <span><i class="c"></i>Completed</span>
-          <span><i class="u"></i>Upcoming</span>
-          <span><i class="m"></i>Missed</span>
+          <span><i class="c"></i>${t('completed')}</span>
+          <span><i class="u"></i>${t('upcoming')}</span>
+          <span><i class="m"></i>${t('missed')}</span>
         </div>
       </div>
       ${detail}
@@ -398,45 +654,43 @@
         <div class="row-label">${label}${hint ? `<span class="hint">${hint}</span>` : ''}</div>
         <div class="row-value strong num">${value}</div>
       </div>`;
-    const diff = st.completed - st.expectedByToday;
-    const paceText = st.isDone ? 'Completed' : diff === 0 ? 'On track' : diff > 0 ? `${plural(diff, 'lesson')} ahead` : `${plural(-diff, 'lesson')} behind`;
 
     return `
-      <h1 class="large-title">Statistics</h1>
+      <h1 class="large-title">${t('stats')}</h1>
       <p class="subtitle">${esc(state.settings.courseName)}</p>
 
       <div class="card stat-hero">
-        <div class="card-label">Progress</div>
+        <div class="card-label">${t('progress')}</div>
         <div class="big num">${st.completed}<small> / ${st.total}</small></div>
         ${progressBar(st)}
         <div class="progress-row">
-          <span><b class="num">${fmtPct(st.percent)}</b> completed</span>
+          <span>${t('pctCompleted', { p: `<b class="num">${fmtPct(st.percent)}</b>` })}</span>
           ${paceLabel(st)}
         </div>
       </div>
 
-      <div class="section-title">Lessons</div>
+      <div class="section-title">${t('lessons')}</div>
       <div class="group">
-        ${row('Total lessons', st.total)}
-        ${row('Completed lessons', st.completed)}
-        ${row('Remaining lessons', st.remaining)}
-        ${row('Completion percentage', fmtPct(st.percent))}
-        ${row('Expected by today', st.expectedByToday, paceText)}
+        ${row(t('totalLessons'), st.total)}
+        ${row(t('completedLessons'), st.completed)}
+        ${row(t('remainingLessons'), st.remaining)}
+        ${row(t('completionPct'), fmtPct(st.percent))}
+        ${row(t('expectedByToday'), st.expectedByToday, t('expectedHint'))}
       </div>
 
-      <div class="section-title">Hours</div>
+      <div class="section-title">${t('hoursTitle')}</div>
       <div class="group">
-        ${row('Total hours', `${fmtNum(st.totalHours)} h`)}
-        ${row('Completed hours', `${fmtNum(st.completedHours)} h`)}
-        ${row('Remaining hours', `${fmtNum(st.remainingHours)} h`)}
+        ${row(t('totalHours'), cnt(fmtNum(st.totalHours), 'hour'))}
+        ${row(t('completedHours'), cnt(fmtNum(st.completedHours), 'hour'))}
+        ${row(t('remainingHours'), cnt(fmtNum(st.remainingHours), 'hour'))}
       </div>
 
-      <div class="section-title">Time</div>
+      <div class="section-title">${t('time')}</div>
       <div class="group">
-        ${row('Current streak', plural(st.streak, 'lesson'), 'Scheduled lesson days completed in a row')}
-        ${row('Course days remaining', plural(st.daysRemaining, 'day'))}
-        ${row('Weeks remaining', plural(st.weeksRemaining, 'week'))}
-        ${row('Course ends', fmtShort(st.endDate))}
+        ${row(t('streak'), cnt(st.streak, 'lesson'), t('streakHint'))}
+        ${row(t('daysRemaining'), cnt(st.daysRemaining, 'day'))}
+        ${row(t('weeksRemaining'), cnt(st.weeksRemaining, 'week'))}
+        ${row(t('courseEnds'), fmtShort(st.endDate))}
       </div>
     `;
   }
@@ -449,74 +703,81 @@
       </div>`;
 
     return `
-      <h1 class="large-title">Settings</h1>
-      <p class="subtitle">Changes are saved automatically.</p>
+      <h1 class="large-title">${t('settings')}</h1>
+      <p class="subtitle">${t('settingsSub')}</p>
 
-      <div class="section-title">Course</div>
+      <div class="section-title">${t('language')} / ${t('appearance')}</div>
       <div class="group">
-        <div class="row"><div class="row-label">Course name</div>
+        <div class="row">${seg('lang', [['en', 'English'], ['uz', "O'zbekcha"]])}</div>
+        <div class="row">${seg('appearance', [['system', t('system')], ['light', t('light')], ['dark', t('dark')]])}</div>
+      </div>
+
+      <div class="section-title">${t('course')}</div>
+      <div class="group">
+        <div class="row"><div class="row-label">${t('courseName')}</div>
           <input type="text" value="${esc(s.courseName)}" data-setting="courseName" maxlength="40" autocomplete="off"></div>
-        <div class="row"><div class="row-label">Start date</div>
+        <div class="row"><div class="row-label">${t('startDate')}<span class="hint">${t('startDateHint')}</span></div>
           <input type="date" value="${s.startDate}" data-setting="startDate"></div>
-        <div class="row"><div class="row-label">Total lessons<span class="hint">Cannot be less than completed (${state.completions.length})</span></div>
+        <div class="row"><div class="row-label">${t('totalLessons')}<span class="hint">${t('totalLessonsHint', { n: state.completions.length })}</span></div>
           <input type="number" inputmode="numeric" min="1" max="9999" value="${s.totalLessons}" data-setting="totalLessons"></div>
-        <div class="row"><div class="row-label">Lesson duration<span class="hint">Hours per lesson</span></div>
+        <div class="row"><div class="row-label">${t('lessonDuration')}<span class="hint">${t('lessonDurationHint')}</span></div>
           <input type="number" inputmode="decimal" min="0.25" max="24" step="0.25" value="${s.lessonDuration}" data-setting="lessonDuration"></div>
       </div>
 
-      <div class="section-title">Weekly schedule</div>
+      <div class="section-title">${t('weeklySchedule')}</div>
       <div class="group">
-        <div class="row"><div class="row-label">Study days<span class="hint">Tap to select the days you have lessons</span></div></div>
+        <div class="row"><div class="row-label">${t('studyDays')}<span class="hint">${t('studyDaysHint')}</span></div></div>
         <div class="days">
-          ${WEEKDAYS.map((w) => `<button class="day-chip ${s.studyDays.includes(w.id) ? 'on' : ''}" data-action="toggle-day" data-day="${w.id}" aria-label="${w.long}" aria-pressed="${s.studyDays.includes(w.id)}">${w.letter}</button>`).join('')}
+          ${WEEKDAY_IDS.map((id) => `<button class="day-chip ${s.studyDays.includes(id) ? 'on' : ''}" data-action="toggle-day" data-day="${id}" aria-label="${wd(id)[1]}" aria-pressed="${s.studyDays.includes(id)}">${wd(id)[0]}</button>`).join('')}
         </div>
-        <div class="row"><div class="row-label">Lessons per week</div><div class="row-value strong num">${s.studyDays.length}</div></div>
+        <div class="row"><div class="row-label">${t('lessonsPerWeek')}<span class="hint">${WEEKDAY_IDS.filter((id) => s.studyDays.includes(id)).map((id) => wd(id)[1]).join(', ')}</span></div><div class="row-value strong num">${s.studyDays.length}</div></div>
       </div>
-      <p class="footnote">${WEEKDAYS.filter((w) => s.studyDays.includes(w.id)).map((w) => w.long).join(', ')}</p>
 
-      <div class="section-title">Course end date</div>
+      <div class="section-title">${t('courseEndDate')}</div>
       <div class="group">
         <div class="row">
-          <div class="row-label">Calculate automatically<span class="hint">From start date, study days and total lessons</span></div>
+          <div class="row-label">${t('autoEnd')}<span class="hint">${t('autoEndHint')}</span></div>
           <label class="switch"><input type="checkbox" data-setting="endDateAuto" ${s.endDateMode === 'auto' ? 'checked' : ''}><i></i></label>
         </div>
         ${s.endDateMode === 'auto'
-          ? `<div class="row"><div class="row-label">Course end date</div><div class="row-value strong">${fmtShort(st.autoEndDate)}</div></div>`
-          : `<div class="row"><div class="row-label">Course end date</div><input type="date" value="${s.endDate || st.autoEndDate}" data-setting="endDate"></div>`}
+          ? `<div class="row"><div class="row-label">${t('courseEndDate')}</div><div class="row-value strong">${fmtShort(st.autoEndDate)}</div></div>`
+          : `<div class="row"><div class="row-label">${t('courseEndDate')}</div><input type="date" value="${s.endDate || st.autoEndDate}" data-setting="endDate"></div>`}
       </div>
 
-      <div class="section-title">Appearance</div>
-      <div class="group"><div class="row">${seg('appearance', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']])}</div></div>
-
-      <div class="section-title">Data</div>
+      <div class="section-title">${t('data')}</div>
       <div class="group">
-        <button class="row-btn" data-action="export">Export backup (JSON)</button>
-        <button class="row-btn" data-action="import">Import backup</button>
-        <button class="row-btn danger" data-action="reset-progress">Reset progress</button>
-        <button class="row-btn danger" data-action="reset-all">Reset everything</button>
+        <button class="row-btn" data-action="export">💾 ${t('exportBackup')}</button>
+        <button class="row-btn" data-action="import">📂 ${t('importBackup')}</button>
       </div>
-      <p class="footnote">Data is stored only on this device. Export a backup before deleting the app or clearing Safari data.</p>
+      <p class="footnote">${t('dataHint')}</p>
 
-      <div class="section-title">About</div>
+      <div class="section-title">${t('resetTitle')}</div>
       <div class="group">
-        <div class="row"><div class="row-label">Version</div><div class="row-value">1.0</div></div>
-        <div class="row"><div class="row-label">Install<span class="hint">Safari → Share → Add to Home Screen</span></div></div>
+        <button class="row-btn danger" data-action="reset-progress">${t('resetProgress')}</button>
+        <button class="row-btn danger" data-action="reset-all">${t('resetAll')}</button>
+      </div>
+
+      <div class="section-title">${t('about')}</div>
+      <div class="group">
+        <div class="row"><div class="row-label">${t('install')}<span class="hint">${t('installHint')}</span></div></div>
+        <button class="row-btn" data-action="show-welcome">${t('showWelcome')}</button>
+        <div class="row"><div class="row-label">${t('version')}</div><div class="row-value">1.1</div></div>
       </div>
     `;
   }
 
-  /* ---------- 6. Actions ---------- */
+  /* ---------- 7. Actions ---------- */
   let toastTimer = null;
   function showToast(text, action) {
-    const t = $('#toast');
-    t.innerHTML = `<span>${esc(text)}</span>${action ? `<button data-action="toast-action">${esc(action.label)}</button>` : ''}`;
-    t.hidden = false;
-    t.classList.toggle('low', $('#actionBar').hidden);
-    t._action = action ? action.onClick : null;
+    const el = $('#toast');
+    el.innerHTML = `<span>${esc(text)}</span>${action ? `<button data-action="toast-action">${esc(action.label)}</button>` : ''}`;
+    el.hidden = false;
+    el.classList.toggle('low', $('#actionBar').hidden);
+    el._action = action ? action.onClick : null;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(hideToast, 4000);
   }
-  function hideToast() { const t = $('#toast'); t.hidden = true; t._action = null; }
+  function hideToast() { const el = $('#toast'); el.hidden = true; el._action = null; }
 
   function commit() { saveState(); render(); }
 
@@ -527,7 +788,7 @@
     commit();
     const n = state.completions.length;
     const after = computeStats();
-    showToast(after.isDone ? `🎉 Lesson #${n} — course completed!` : `Lesson #${n} completed · ${after.remaining} left`, { label: 'Undo', onClick: undoLast });
+    showToast(after.isDone ? t('toastAllDone', { n }) : t('toastDone', { n, left: cnt(after.remaining, 'lesson') }), { label: t('undo'), onClick: undoLast });
   }
 
   function undoLast() {
@@ -540,7 +801,7 @@
   function removeCompletion(id) {
     const idx = state.completions.findIndex((c) => c.id === id);
     if (idx === -1) return;
-    if (!confirm(`Remove Lesson #${idx + 1} from history?`)) return;
+    if (!confirm(t('removeConfirm', { n: idx + 1 }))) return;
     state.completions.splice(idx, 1);
     commit();
   }
@@ -565,7 +826,7 @@
   function toggleDay(day) {
     const days = state.settings.studyDays;
     if (days.includes(day)) {
-      if (days.length === 1) { showToast('Keep at least one study day'); return; }
+      if (days.length === 1) { showToast(t('keepOneDay')); return; }
       state.settings.studyDays = days.filter((d) => d !== day);
     } else {
       state.settings.studyDays = [...days, day];
@@ -591,25 +852,27 @@
       try {
         const parsed = JSON.parse(reader.result);
         if (!parsed || typeof parsed !== 'object' || !parsed.settings) throw new Error('bad');
-        if (!confirm('Replace current data with this backup?')) return;
+        if (!confirm(t('importConfirm'))) return;
         state = normalize(parsed);
         commit();
-        showToast('Backup imported');
+        showToast(t('importOk'));
       } catch (e) {
-        showToast('Could not read this backup file');
+        showToast(t('importBad'));
       }
     };
     reader.readAsText(file);
   }
 
   function resetProgress() {
-    if (!confirm('Delete all completed lessons? Settings will be kept.')) return;
+    if (!confirm(t('resetProgressConfirm'))) return;
     state.completions = [];
     commit();
   }
   function resetAll() {
-    if (!confirm('Reset everything to defaults? This cannot be undone.')) return;
+    if (!confirm(t('resetAllConfirm'))) return;
+    const keepLang = state.settings.lang;
     state = normalize({});
+    state.settings.lang = keepLang;
     commit();
   }
 
@@ -624,13 +887,15 @@
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-action]');
     if (!el) return;
-    const a = el.dataset.action;
-    switch (a) {
+    switch (el.dataset.action) {
       case 'tab': setTab(el.dataset.tab); break;
       case 'complete': completeLesson(); break;
       case 'undo': undoLast(); break;
       case 'remove': removeCompletion(el.dataset.id); break;
       case 'toast-action': { const fn = $('#toast')._action; hideToast(); if (fn) fn(); break; }
+      case 'welcome-done': ui.welcomeDone = true; saveUI(); render(); break;
+      case 'show-welcome': ui.welcomeDone = false; saveUI(); setTab('dashboard'); break;
+      case 'switch-lang': state.settings.lang = lang === 'en' ? 'uz' : 'en'; commit(); break;
       case 'cal-prev': ui.calMonth--; if (ui.calMonth < 0) { ui.calMonth = 11; ui.calYear--; } render(); break;
       case 'cal-next': ui.calMonth++; if (ui.calMonth > 11) { ui.calMonth = 0; ui.calYear++; } render(); break;
       case 'cal-today': { const d = new Date(); ui.calYear = d.getFullYear(); ui.calMonth = d.getMonth(); ui.calSelected = todayISO(); render(); break; }
@@ -665,8 +930,8 @@
   // Keep "today"-based numbers fresh when the app is reopened or the day changes.
   let lastDay = todayISO();
   function refreshIfDayChanged() {
-    const t = todayISO();
-    if (t !== lastDay) { lastDay = t; render(); }
+    const today = todayISO();
+    if (today !== lastDay) { lastDay = today; render(); }
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshIfDayChanged(); });
   setInterval(refreshIfDayChanged, 60 * 1000);

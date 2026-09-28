@@ -484,3 +484,26 @@ h1, h2, h3, p { margin: 0; }
 /* ---------- Small fixes ---------- */
 .row .segmented { flex: 1; }
 .toast.low { bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 16px); }
+
+/* ---------- Welcome card ---------- */
+.welcome { border: 1.5px solid var(--accent); }
+.welcome h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.3px; }
+.welcome p { font-size: 15px; line-height: 1.45; }
+.welcome p + p { margin-top: 6px; }
+.welcome .btn-row { margin-top: 14px; }
+.btn.small { min-height: 46px; font-size: 16px; box-shadow: none; }
+
+/* ---------- Dashboard tweaks ---------- */
+.divider { height: 1px; background: var(--sep); margin: 14px 0; }
+.action-hint { text-align: center; font-size: 12px; color: var(--text-2); margin-top: 6px; }
+.action-bar { padding-bottom: 6px; }
+.view.has-action { padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 128px); }
+.toast { bottom: calc(var(--tab-h) + env(safe-area-inset-bottom, 0px) + 110px); }
+
+/* ---------- History tweaks ---------- */
+.hist-row .lesson { display: flex; align-items: center; gap: 8px; }
+.date-wrap { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; color: var(--accent); font-size: 14px; }
+.hist-row .date-input { color: var(--accent); font-weight: 500; }
+.text-btn { font-size: 15px; font-weight: 600; color: var(--accent); padding: 8px 12px; border-radius: 10px; background: var(--card-2); flex: none; }
+.text-btn.danger { color: var(--red); }
+.text-btn:active { opacity: 0.7; }

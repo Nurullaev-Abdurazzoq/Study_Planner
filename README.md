@@ -31,13 +31,15 @@ Internet, akkaunt yoki App Store kerak emas: bir marta ochib, **Add to Home Scre
 
 ## ✨ Imkoniyatlar
 
+Birinchi ochilganda qisqa **«Xush kelibsiz»** kartochkasi chiqadi (qanday ishlashini 2 gapda tushuntiradi). Til: **English / O'zbekcha** — Sozlamalarda yoki shu kartochkada almashtiriladi.
+
 | Ekran | Nima bor |
 |---|---|
 | **Home** | Katta progress (1 / 66, %), progress bar, Total / Remaining / Completed / Hours remaining, kurs tugash sanasi va qolgan vaqt (oy · hafta · kun), keyingi dars sanasi, "On track / behind / ahead", **Complete Lesson** tugmasi (Undo bilan) |
 | **History** | Har bir tugallangan dars sanasi bilan. Sanani o'zgartirish, xato bosilganini o'chirish, "Undo last" |
 | **Calendar** | Dars kunlari belgilangan: ✓ Completed (yashil), ○ Upcoming (ko'k), Missed (kulrang). Kunni bossangiz tafsilot |
 | **Stats** | Total / Completed / Remaining lessons, %, Total / Completed / Remaining hours, Current streak, Course days remaining |
-| **Settings** | Course name, Start date, Total lessons, Lesson duration, Study days (haftaning kunlari), Course end date (auto / qo'lda), Appearance (System / Light / Dark), Export / Import backup, Reset |
+| **Settings** | Til (English / O'zbekcha), Ko'rinish (Tizim / Yorug' / Qorong'i), Course name, Start date, Total lessons, Lesson duration, Study days (haftaning kunlari), Course end date (auto / qo'lda), Nusxa saqlash / tiklash, Qaytadan boshlash |
 
 Kurs tugaganda Home ekranida **🎉 Course Completed** chiqadi.
 
