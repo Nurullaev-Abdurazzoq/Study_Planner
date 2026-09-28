@@ -1,5 +1,5 @@
 /* Service worker: caches the app shell so it works offline on the home screen. */
-const CACHE = 'study-tracker-v5';
+const CACHE = 'study-tracker-v6';
 const ASSETS = [
   './',
   './index.html',

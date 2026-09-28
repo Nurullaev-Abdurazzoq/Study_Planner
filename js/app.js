@@ -15,6 +15,7 @@
   'use strict';
 
   /* ---------- 1. Constants & defaults ---------- */
+  const APP_VERSION = '1.5';
   const STORAGE_KEY = 'studyCourseTracker.v1';
   const UI_KEY = 'studyCourseTracker.ui';
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -52,6 +53,10 @@
 
       started: 'Started {date}',
       infoTitle: 'About this course',
+      earlyTitle: '⚠️ Lesson marked before the course start',
+      earlyText: '{list} — but the course starts on {start}. If this was a test tap, remove it.',
+      earlyRemove: 'Remove',
+      earlyConfirm: 'The course starts on {start}. Mark a lesson as completed anyway?',
       infoDays: '{n} days a week — {days}',
       infoNoteDefault: 'Each lesson lasts 2–2:30 hours',
       infoTotal: '{lessons} in total · {hours}',
@@ -205,6 +210,10 @@
 
       started: '{date} dan boshlangan',
       infoTitle: 'Kurs haqida',
+      earlyTitle: '⚠️ Kurs boshlanishidan oldin belgilangan dars',
+      earlyText: "{list} — lekin kurs {start} kuni boshlanadi. Agar sinov uchun bosilgan bo'lsa, o'chiring.",
+      earlyRemove: "O'chirish",
+      earlyConfirm: "Kurs {start} kuni boshlanadi. Baribir dars tugatildi deb belgilansinmi?",
       infoDays: 'Haftasiga {n} kun — {days}',
       infoNoteDefault: 'Har bir dars 2–2:30 soat davom etadi',
       infoTotal: 'Jami {lessons} · {hours}',
@@ -583,6 +592,19 @@
       </div>`;
   }
 
+  // Completions dated before the course start are almost always test taps.
+  function earlyNotice(st) {
+    const early = state.completions.map((c, i) => ({ ...c, n: i + 1 })).filter((c) => c.date < state.settings.startDate);
+    if (!early.length) return '';
+    const list = early.map((c) => `${t('lessonN', { n: c.n })} · ${fmtShort(c.date)}`).join(', ');
+    return `
+      <div class="card notice">
+        <h2>${t('earlyTitle')}</h2>
+        <p>${t('earlyText', { list: esc(list), start: fmtShort(state.settings.startDate) })}</p>
+        <button class="btn btn-danger small" data-action="remove-early">🗑 ${t('earlyRemove')}</button>
+      </div>`;
+  }
+
   function renderDashboard(st) {
     const s = state.settings;
     const days = s.studyDays.length === 7 ? '' : ' · ' + WEEKDAY_IDS.filter((id) => s.studyDays.includes(id)).map((id) => wd(id)[0]).join(', ');
@@ -638,6 +660,7 @@
       <p class="subtitle">${t('started', { date: fmtShort(s.startDate) })}${esc(days)}</p>
 
       ${welcomeCard()}
+      ${earlyNotice(st)}
       ${heroOrCelebrate}
 
       <div class="grid-2">
@@ -897,7 +920,7 @@
       <div class="group">
         <div class="row"><div class="row-label">${t('install')}<span class="hint">${t('installHint')}</span></div></div>
         <button class="row-btn" data-action="show-welcome">${t('showWelcome')}</button>
-        <div class="row"><div class="row-label">${t('version')}</div><div class="row-value">1.4</div></div>
+        <div class="row"><div class="row-label">${t('version')}</div><div class="row-value">${APP_VERSION}</div></div>
       </div>
     `;
   }
@@ -920,6 +943,7 @@
   function completeLesson() {
     const st = computeStats();
     if (st.isDone) return;
+    if (!st.started && !confirm(t('earlyConfirm', { start: fmtShort(state.settings.startDate) }))) return;
     state.completions.push({ id: uid(), date: todayISO(), completedAt: new Date().toISOString() });
     state.nextLessonDate = ''; // the chosen next-lesson date is used up
     commit();
@@ -1066,6 +1090,7 @@
       case 'reset-progress': resetProgress(); break;
       case 'reset-all': resetAll(); break;
       case 'skip-date': skipDate(el.dataset.date); break;
+      case 'remove-early': state.completions = state.completions.filter((c) => c.date >= state.settings.startDate); state.nextLessonDate = ''; commit(); break;
       case 'unskip-date': unskipDate(el.dataset.date); break;
       default: break;
     }
@@ -1099,9 +1124,34 @@
   setInterval(refreshIfDayChanged, 60 * 1000);
 
   // Offline support.
+  let swReg = null;
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').then((r) => { swReg = r; }).catch(() => {});
+    });
   }
+
+  // Auto-update: when the app is opened, check whether a newer version was published.
+  let checkingVersion = false;
+  function checkForUpdate() {
+    if (checkingVersion || !navigator.onLine) return;
+    checkingVersion = true;
+    if (swReg) swReg.update().catch(() => {});
+    fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((info) => {
+        if (info && info.version && info.version !== APP_VERSION) {
+          if (sessionStorage.getItem('reloadedFor') !== info.version) {
+            sessionStorage.setItem('reloadedFor', info.version);
+            location.reload();
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => { checkingVersion = false; });
+  }
+  window.addEventListener('load', checkForUpdate);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
 
   render();
 })();

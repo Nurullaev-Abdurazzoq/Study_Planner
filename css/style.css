@@ -525,3 +525,9 @@ h1, h2, h3, p { margin: 0; }
 .summary { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--sep); font-size: 15px; line-height: 1.5; color: var(--text); }
 .row.stacked { flex-direction: column; align-items: stretch; gap: 6px; }
 .row.stacked input[type="text"] { max-width: none; width: 100%; text-align: left; background: var(--card-2); border-radius: 10px; padding: 10px 12px; color: var(--text); }
+
+/* ---------- Notice card ---------- */
+.notice { border: 1.5px solid var(--orange); }
+.notice h2 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+.notice p { font-size: 15px; line-height: 1.45; color: var(--text-2); margin-bottom: 12px; }
+.btn-danger.small { background: var(--red-soft); }
