@@ -32,6 +32,7 @@
     endDate: '',
     appearance: 'system',     // 'system' | 'light' | 'dark'
     lang: 'en',               // 'en' | 'uz'
+    courseNote: '',           // free text shown on the Home screen (empty = default text)
   };
 
   /* ---------- 2. Translations ---------- */
@@ -50,6 +51,30 @@
       switchLang: "O'zbekcha",
 
       started: 'Started {date}',
+      infoTitle: 'About this course',
+      infoDays: '{n} days a week — {days}',
+      infoNoteDefault: 'Each lesson lasts 2–2:30 hours',
+      infoTotal: '{lessons} in total · {hours}',
+      infoLength: 'From {a} to {b}',
+      summary: 'You have completed {done} of {total} lessons. {left} ({hours}) to go. The course ends on {date} — {days} from now.',
+      summaryDone: 'Congratulations! You have completed all {total} lessons.',
+      totalLessonsStatHint: 'In the whole course',
+      completedHint: 'Lessons you have finished',
+      remainingHint: 'Still to do',
+      pctHint: 'How much of the course is done',
+      totalHoursHint: 'All lessons × lesson length',
+      completedHoursHint: 'Hours you have already studied',
+      remainingHoursHint: 'Hours still to study',
+      daysRemainingHint: 'Until the course end date',
+      courseNameHint: 'Shown at the top of the Home screen',
+      courseNote: 'Note about lessons',
+      courseNoteHint: 'Shown on the Home screen',
+      courseDesc: 'Basic facts about your course.',
+      scheduleDesc: 'Which days of the week you have lessons. Blue = lesson day.',
+      endDesc: 'The app works out the end date for you. Turn this off only if you want to set it yourself.',
+      langDesc: 'Choose your language and a light or dark look.',
+      dataDesc: 'Save a copy of your progress or bring it back.',
+      resetDesc: 'Use these only if you want to start from zero.',
       courseProgress: 'Course progress',
       lessonsLeftHoursLeft: '{lessons} · {hours} to go',
       totalLessons: 'Total lessons',
@@ -119,12 +144,12 @@
       remainingLessons: 'Remaining lessons',
       completionPct: 'Completion percentage',
       expectedByToday: 'Should be done by today',
-      expectedHint: 'According to your schedule',
+      expectedHint: 'By the schedule, this many should be done by today',
       totalHours: 'Total hours',
       completedHours: 'Completed hours',
       remainingHours: 'Remaining hours',
       streak: 'Current streak',
-      streakHint: 'Lesson days completed in a row',
+      streakHint: 'Lessons done one after another without a break longer than a week',
       daysRemaining: 'Course days remaining',
       weeksRemaining: 'Weeks remaining',
 
@@ -179,6 +204,30 @@
       switchLang: 'English',
 
       started: '{date} dan boshlangan',
+      infoTitle: 'Kurs haqida',
+      infoDays: 'Haftasiga {n} kun — {days}',
+      infoNoteDefault: 'Har bir dars 2–2:30 soat davom etadi',
+      infoTotal: 'Jami {lessons} · {hours}',
+      infoLength: '{a} dan {b} gacha',
+      summary: "{total} darsdan {done} tasi o'tildi. {left} ({hours}) qoldi. Kurs {date} kuni tugaydi — {days} qoldi.",
+      summaryDone: "Tabriklaymiz! Barcha {total} dars o'tildi.",
+      totalLessonsStatHint: 'Butun kurs davomida',
+      completedHint: 'Siz tugatgan darslar',
+      remainingHint: "Hali o'tilmagan darslar",
+      pctHint: 'Kursning qancha qismi tugadi',
+      totalHoursHint: 'Barcha darslar × dars davomiyligi',
+      completedHoursHint: "Siz allaqachon o'qigan soatlar",
+      remainingHoursHint: "Hali o'qiladigan soatlar",
+      daysRemainingHint: 'Kurs tugash sanasigacha',
+      courseNameHint: 'Asosiy sahifaning tepasida ko\'rinadi',
+      courseNote: 'Darslar haqida izoh',
+      courseNoteHint: 'Asosiy sahifada ko\'rinadi',
+      courseDesc: "Kursingiz haqidagi asosiy ma'lumotlar.",
+      scheduleDesc: "Haftaning qaysi kunlari darsingiz bor. Ko'k = dars kuni.",
+      endDesc: "Tugash sanasini ilova o'zi hisoblaydi. Faqat o'zingiz belgilamoqchi bo'lsangiz o'chiring.",
+      langDesc: "Tilni va yorug' yoki qorong'i ko'rinishni tanlang.",
+      dataDesc: 'Jarayoningiz nusxasini saqlang yoki qaytaring.',
+      resetDesc: "Faqat noldan boshlamoqchi bo'lsangiz ishlating.",
       courseProgress: 'Kurs jarayoni',
       lessonsLeftHoursLeft: '{lessons} · {hours} qoldi',
       totalLessons: 'Jami darslar',
@@ -248,12 +297,12 @@
       remainingLessons: 'Qolgan darslar',
       completionPct: 'Bajarilgan foiz',
       expectedByToday: 'Bugungacha bo\'lishi kerak',
-      expectedHint: 'Jadval bo\'yicha',
+      expectedHint: "Jadval bo'yicha bugungacha shuncha dars o'tilishi kerak edi",
       totalHours: 'Jami soat',
       completedHours: "O'tilgan soat",
       remainingHours: 'Qolgan soat',
       streak: 'Ketma-ketlik',
-      streakHint: 'Ketma-ket tugatilgan dars kunlari',
+      streakHint: "Bir haftadan uzun tanaffussiz ketma-ket o'tilgan darslar",
       daysRemaining: 'Kurs tugashiga kun',
       weeksRemaining: 'Qolgan haftalar',
 
@@ -340,10 +389,8 @@
     // If those defaults were never changed, move to the current defaults.
     if (!s.settingsVersion) {
       const oldDays = Array.isArray(s.studyDays) && s.studyDays.length === 3 && [1, 3, 5].every((d) => s.studyDays.includes(d));
-      if (oldDays && s.startDate === '2026-09-28') {
-        s.studyDays = [...DEFAULT_SETTINGS.studyDays];
-        s.startDate = DEFAULT_SETTINGS.startDate;
-      }
+      if (oldDays) s.studyDays = [...DEFAULT_SETTINGS.studyDays];
+      if (s.startDate === '2026-09-28') s.startDate = DEFAULT_SETTINGS.startDate;
       s.settingsVersion = 2;
     }
     s.courseName = String(s.courseName || '').trim() || DEFAULT_SETTINGS.courseName;
@@ -358,6 +405,7 @@
     if (!isValidISO(s.endDate)) s.endDate = '';
     if (!['system', 'light', 'dark'].includes(s.appearance)) s.appearance = 'system';
     if (!L[s.lang]) s.lang = 'en';
+    s.courseNote = String(s.courseNote || '').trim().slice(0, 80);
 
     const completions = (Array.isArray(obj && obj.completions) ? obj.completions : [])
       .filter((c) => c && isValidISO(c.date))
@@ -514,7 +562,7 @@
 
   function paceLabel(st) {
     if (st.isDone) return `<span class="pill green">${t('courseCompletedPill')}</span>`;
-    if (!st.started) return `<span class="pill accent">${t('startsIn', { n: cnt(daysBetween(st.today, state.settings.startDate), 'day') })}</span>`;
+    if (!st.started && st.completed === 0) return `<span class="pill accent">${t('startsIn', { n: cnt(daysBetween(st.today, state.settings.startDate), 'day') })}</span>`;
     const diff = st.completed - st.expectedByToday;
     if (diff === 0) return `<span class="pill green">${t('onTrack')}</span>`;
     if (diff > 0) return `<span class="pill accent">${t('ahead', { n: cnt(diff, 'lesson') })}</span>`;
@@ -612,6 +660,16 @@
         </div>
         <div class="divider"></div>
         <div class="next-block">${nextBlock}</div>
+      </div>
+
+      <div class="card info-card">
+        <div class="card-label">${t('infoTitle')}</div>
+        <ul class="info-list">
+          <li>📅 ${t('infoDays', { n: s.studyDays.length, days: WEEKDAY_IDS.filter((id) => s.studyDays.includes(id)).map((id) => wd(id)[1]).join(', ') })}</li>
+          <li>⏱ ${esc(s.courseNote || t('infoNoteDefault'))}</li>
+          <li>📚 ${t('infoTotal', { lessons: cnt(st.total, 'lesson'), hours: cnt(fmtNum(st.totalHours), 'hour') })}</li>
+          <li>🏁 ${t('infoLength', { a: fmtShort(s.startDate), b: fmtShort(st.endDate) })}</li>
+        </ul>
       </div>
 
       ${st.lastCompletion ? `<p class="footnote">${t('lastCompleted', { n: state.completions.length, date: fmtShort(st.lastCompletion.date) })}</p>` : ''}
@@ -734,28 +792,31 @@
           <span>${t('pctCompleted', { p: `<b class="num">${fmtPct(st.percent)}</b>` })}</span>
           ${paceLabel(st)}
         </div>
+        <p class="summary">${st.isDone
+          ? t('summaryDone', { total: st.total })
+          : t('summary', { done: st.completed, total: st.total, left: cnt(st.remaining, 'lesson'), hours: cnt(fmtNum(st.remainingHours), 'hour'), date: fmtLong(st.endDate), days: cnt(st.daysRemaining, 'day') })}</p>
       </div>
 
       <div class="section-title">${t('lessons')}</div>
       <div class="group">
-        ${row(t('totalLessons'), st.total)}
-        ${row(t('completedLessons'), st.completed)}
-        ${row(t('remainingLessons'), st.remaining)}
-        ${row(t('completionPct'), fmtPct(st.percent))}
+        ${row(t('totalLessons'), st.total, t('totalLessonsStatHint'))}
+        ${row(t('completedLessons'), st.completed, t('completedHint'))}
+        ${row(t('remainingLessons'), st.remaining, t('remainingHint'))}
+        ${row(t('completionPct'), fmtPct(st.percent), t('pctHint'))}
         ${row(t('expectedByToday'), st.expectedByToday, t('expectedHint'))}
       </div>
 
       <div class="section-title">${t('hoursTitle')}</div>
       <div class="group">
-        ${row(t('totalHours'), cnt(fmtNum(st.totalHours), 'hour'))}
-        ${row(t('completedHours'), cnt(fmtNum(st.completedHours), 'hour'))}
-        ${row(t('remainingHours'), cnt(fmtNum(st.remainingHours), 'hour'))}
+        ${row(t('totalHours'), cnt(fmtNum(st.totalHours), 'hour'), t('totalHoursHint'))}
+        ${row(t('completedHours'), cnt(fmtNum(st.completedHours), 'hour'), t('completedHoursHint'))}
+        ${row(t('remainingHours'), cnt(fmtNum(st.remainingHours), 'hour'), t('remainingHoursHint'))}
       </div>
 
       <div class="section-title">${t('time')}</div>
       <div class="group">
         ${row(t('streak'), cnt(st.streak, 'lesson'), t('streakHint'))}
-        ${row(t('daysRemaining'), cnt(st.daysRemaining, 'day'))}
+        ${row(t('daysRemaining'), cnt(st.daysRemaining, 'day'), t('daysRemainingHint'))}
         ${row(t('weeksRemaining'), cnt(st.weeksRemaining, 'week'))}
         ${row(t('courseEnds'), fmtShort(st.endDate))}
       </div>
@@ -774,14 +835,16 @@
       <p class="subtitle">${t('settingsSub')}</p>
 
       <div class="section-title">${t('language')} / ${t('appearance')}</div>
+      <p class="section-desc">${t('langDesc')}</p>
       <div class="group">
         <div class="row">${seg('lang', [['en', 'English'], ['uz', "O'zbekcha"]])}</div>
         <div class="row">${seg('appearance', [['system', t('system')], ['light', t('light')], ['dark', t('dark')]])}</div>
       </div>
 
       <div class="section-title">${t('course')}</div>
+      <p class="section-desc">${t('courseDesc')}</p>
       <div class="group">
-        <div class="row"><div class="row-label">${t('courseName')}</div>
+        <div class="row"><div class="row-label">${t('courseName')}<span class="hint">${t('courseNameHint')}</span></div>
           <input type="text" value="${esc(s.courseName)}" data-setting="courseName" maxlength="40" autocomplete="off"></div>
         <div class="row"><div class="row-label">${t('startDate')}<span class="hint">${t('startDateHint')}</span></div>
           <input type="date" value="${s.startDate}" data-setting="startDate"></div>
@@ -789,9 +852,12 @@
           <input type="number" inputmode="numeric" min="1" max="9999" value="${s.totalLessons}" data-setting="totalLessons"></div>
         <div class="row"><div class="row-label">${t('lessonDuration')}<span class="hint">${t('lessonDurationHint')}</span></div>
           <input type="number" inputmode="decimal" min="0.25" max="24" step="0.25" value="${s.lessonDuration}" data-setting="lessonDuration"></div>
+        <div class="row stacked"><div class="row-label">${t('courseNote')}<span class="hint">${t('courseNoteHint')}</span></div>
+          <input type="text" value="${esc(s.courseNote)}" placeholder="${esc(t('infoNoteDefault'))}" data-setting="courseNote" maxlength="80" autocomplete="off"></div>
       </div>
 
       <div class="section-title">${t('weeklySchedule')}</div>
+      <p class="section-desc">${t('scheduleDesc')}</p>
       <div class="group">
         <div class="row"><div class="row-label">${t('studyDays')}<span class="hint">${t('studyDaysHint')}</span></div></div>
         <div class="days">
@@ -801,6 +867,7 @@
       </div>
 
       <div class="section-title">${t('courseEndDate')}</div>
+      <p class="section-desc">${t('endDesc')}</p>
       <div class="group">
         <div class="row">
           <div class="row-label">${t('autoEnd')}<span class="hint">${t('autoEndHint')}</span></div>
@@ -812,6 +879,7 @@
       </div>
 
       <div class="section-title">${t('data')}</div>
+      <p class="section-desc">${t('dataDesc')}</p>
       <div class="group">
         <button class="row-btn" data-action="export">💾 ${t('exportBackup')}</button>
         <button class="row-btn" data-action="import">📂 ${t('importBackup')}</button>
@@ -819,6 +887,7 @@
       <p class="footnote">${t('dataHint')}</p>
 
       <div class="section-title">${t('resetTitle')}</div>
+      <p class="section-desc">${t('resetDesc')}</p>
       <div class="group">
         <button class="row-btn danger" data-action="reset-progress">${t('resetProgress')}</button>
         <button class="row-btn danger" data-action="reset-all">${t('resetAll')}</button>
@@ -828,7 +897,7 @@
       <div class="group">
         <div class="row"><div class="row-label">${t('install')}<span class="hint">${t('installHint')}</span></div></div>
         <button class="row-btn" data-action="show-welcome">${t('showWelcome')}</button>
-        <div class="row"><div class="row-label">${t('version')}</div><div class="row-value">1.3</div></div>
+        <div class="row"><div class="row-label">${t('version')}</div><div class="row-value">1.4</div></div>
       </div>
     `;
   }
@@ -878,6 +947,7 @@
     const s = state.settings;
     switch (key) {
       case 'courseName': s.courseName = String(raw).trim() || DEFAULT_SETTINGS.courseName; break;
+      case 'courseNote': s.courseNote = String(raw).trim().slice(0, 80); break;
       case 'startDate': if (isValidISO(raw)) s.startDate = raw; break;
       case 'totalLessons': s.totalLessons = clampInt(raw, Math.max(1, state.completions.length), 9999, s.totalLessons); break;
       case 'lessonDuration': s.lessonDuration = clampNum(raw, 0.25, 24, s.lessonDuration); break;
