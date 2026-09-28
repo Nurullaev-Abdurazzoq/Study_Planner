@@ -97,11 +97,18 @@
       calendarSub: 'Lesson days are marked. Tap a day for details.',
       today: 'Today',
       upcoming: 'Upcoming',
-      missed: 'Missed',
       calCompleted: '✓ Completed — {list}',
-      calMissed: 'Lesson #{n} was scheduled — not completed',
       calUpcoming: '○ Upcoming — Lesson #{n}',
+      calSkipped: '✕ No lesson on this day (skipped)',
       calNone: 'No lesson on this day',
+      noLesson: 'No lesson',
+      tapToChange: 'Tap the date to change it',
+      noLessonToday: 'No lesson today',
+      noLessonThisDay: 'No lesson on this day',
+      skipConfirm: "Mark {date} as a day without a lesson?\n\nIt will not be counted, and the schedule moves to the next study day.",
+      skippedToast: '{date} — no lesson. Schedule updated.',
+      restoreLesson: 'Put the lesson back on this day',
+      nextMoved: 'Next lesson moved to {date}',
 
       stats: 'Statistics',
       progress: 'Progress',
@@ -219,11 +226,18 @@
       calendarSub: 'Dars kunlari belgilangan. Batafsil uchun kunni bosing.',
       today: 'Bugun',
       upcoming: 'Kelgusi',
-      missed: "O'tkazilgan",
       calCompleted: '✓ Tugallangan — {list}',
-      calMissed: '{n}-dars rejalashtirilgan edi — tugatilmagan',
       calUpcoming: '○ Kelgusi — {n}-dars',
+      calSkipped: "✕ Bu kuni dars yo'q (o'tkazib yuborilgan)",
       calNone: 'Bu kunda dars yo\'q',
+      noLesson: "Dars yo'q",
+      tapToChange: "Sanani o'zgartirish uchun uni bosing",
+      noLessonToday: "Bugun dars yo'q",
+      noLessonThisDay: "Bu kuni dars yo'q",
+      skipConfirm: "{date} kuni dars yo'q deb belgilansinmi?\n\nBu kun hisoblanmaydi, jadval keyingi dars kuniga suriladi.",
+      skippedToast: "{date} — dars yo'q. Jadval yangilandi.",
+      restoreLesson: 'Bu kunga darsni qaytarish',
+      nextMoved: 'Keyingi dars {date}ga ko\'chirildi',
 
       stats: 'Statistika',
       progress: 'Jarayon',
@@ -339,7 +353,10 @@
       .filter((c) => c && isValidISO(c.date))
       .map((c) => ({ id: c.id || uid(), date: c.date, completedAt: c.completedAt || new Date().toISOString() }));
 
-    return { settings: s, completions };
+    const skipped = Array.isArray(obj && obj.skipped) ? [...new Set(obj.skipped.filter(isValidISO))] : [];
+    const nextLessonDate = obj && isValidISO(obj.nextLessonDate) ? obj.nextLessonDate : '';
+
+    return { settings: s, completions, skipped, nextLessonDate };
   }
 
   function loadState() {
@@ -363,31 +380,55 @@
 
   /* ---------- 5. Calculations ---------- */
 
-  // The dates on which lesson #1 … #total are scheduled, given the study days.
-  function scheduleDates(s) {
+  // Planned schedule: lesson days from the start date, skipping "no lesson" days.
+  // Used only to judge pace ("2 lessons behind").
+  function plannedSchedule(s, skipped) {
     const dates = [];
-    if (!s.studyDays.length) return dates;
+    const skip = new Set(skipped);
     let d = parseISO(s.startDate);
     let guard = 0;
     while (dates.length < s.totalLessons && guard < 20000) {
-      if (s.studyDays.includes(d.getDay())) dates.push(toISO(d));
+      const iso = toISO(d);
+      if (s.studyDays.includes(d.getDay()) && !skip.has(iso)) dates.push(iso);
       d = addDays(d, 1);
       guard++;
     }
     return dates;
   }
 
-  // Consecutive scheduled lesson days (up to today) that have a completion.
-  // Today is not counted against you until it is over.
-  function currentStreak(schedule, completions, today) {
-    const done = new Set(completions.map((c) => c.date));
-    const past = schedule.filter((d) => d <= today);
-    let streak = 0;
-    for (let i = past.length - 1; i >= 0; i--) {
-      const d = past[i];
-      if (done.has(d)) streak++;
-      else if (d === today) continue;
-      else break;
+  // Dates for the lessons still to do (lesson #completed+1 … #total).
+  // Starts today (or at the chosen "next lesson" date) and follows the study days,
+  // skipping "no lesson" days and days that already have a completed lesson.
+  function remainingSchedule(s, remaining, today) {
+    const dates = [];
+    if (remaining <= 0) return dates;
+    const exclude = new Set([...state.skipped, ...state.completions.map((c) => c.date)]);
+    let d;
+    if (state.nextLessonDate && state.nextLessonDate >= today) {
+      dates.push(state.nextLessonDate);
+      d = addDays(parseISO(state.nextLessonDate), 1);
+    } else {
+      d = parseISO(today >= s.startDate ? today : s.startDate);
+    }
+    let guard = 0;
+    while (dates.length < remaining && guard < 20000) {
+      const iso = toISO(d);
+      if (s.studyDays.includes(d.getDay()) && !exclude.has(iso)) dates.push(iso);
+      d = addDays(d, 1);
+      guard++;
+    }
+    return dates;
+  }
+
+  // Lessons completed in a row without a gap of more than 7 days (counted from the latest).
+  function currentStreak(completions, today) {
+    const dates = completions.map((c) => c.date).sort();
+    if (!dates.length) return 0;
+    if (daysBetween(dates[dates.length - 1], today) > 7) return 0;
+    let streak = 1;
+    for (let i = dates.length - 1; i > 0; i--) {
+      if (daysBetween(dates[i - 1], dates[i]) > 7) break;
+      streak++;
     }
     return streak;
   }
@@ -395,7 +436,6 @@
   function computeStats() {
     const s = state.settings;
     const today = todayISO();
-    const schedule = scheduleDates(s);
 
     const total = s.totalLessons;
     const completed = Math.min(state.completions.length, total);
@@ -406,24 +446,25 @@
     const completedHours = completed * s.lessonDuration;
     const remainingHours = remaining * s.lessonDuration;
 
-    const autoEndDate = schedule.length ? schedule[schedule.length - 1] : s.startDate;
+    const schedule = remainingSchedule(s, remaining, today);
+    const lastCompletion = state.completions.length ? state.completions[state.completions.length - 1] : null;
+    const autoEndDate = schedule.length ? schedule[schedule.length - 1] : (lastCompletion ? lastCompletion.date : s.startDate);
     const endDate = s.endDateMode === 'manual' && s.endDate ? s.endDate : autoEndDate;
 
     const daysRemaining = Math.max(0, daysBetween(today, endDate));
     const weeksRemaining = Math.floor(daysRemaining / 7);
     const monthsRemaining = monthsBetween(today, endDate);
 
-    // Lessons that should already be done. Today's lesson is not counted until the day is over.
-    const expectedByToday = schedule.filter((d) => d < today).length;
-    const nextLessonDate = remaining > 0 ? (schedule.find((d) => d >= today) || null) : null;
-    const lastCompletion = state.completions.length ? state.completions[state.completions.length - 1] : null;
+    // Lessons that should already be done by plan. Today's lesson is not counted until the day is over.
+    const expectedByToday = plannedSchedule(s, state.skipped).filter((d) => d < today).length;
+    const nextLessonDate = schedule.length ? schedule[0] : null;
 
     return {
       today, schedule, total, completed, remaining, percent,
       totalHours, completedHours, remainingHours,
       autoEndDate, endDate, daysRemaining, weeksRemaining, monthsRemaining,
       expectedByToday, nextLessonDate, lastCompletion,
-      streak: currentStreak(schedule, state.completions, today),
+      streak: currentStreak(state.completions, today),
       isDone: remaining === 0,
       started: today >= s.startDate,
     };
@@ -516,9 +557,23 @@
       : `<div class="ends-remaining num">${st.monthsRemaining >= 1 ? cnt(st.monthsRemaining, 'month') : cnt(st.weeksRemaining, 'week')}</div>
          <div class="ends-detail num">${cnt(st.weeksRemaining, 'week')} · ${cnt(st.daysRemaining, 'day')}</div>`;
 
-    const nextText = st.isDone ? t('allDone')
-      : st.nextLessonDate ? `${fmtDay(st.nextLessonDate)} · ${t('lessonN', { n: st.completed + 1 })}`
-      : t('noDaysLeft');
+    let nextBlock;
+    if (st.isDone) {
+      nextBlock = `<div class="lbl">${t('finished')}</div><div class="val">${t('allDone')}</div>`;
+    } else if (st.nextLessonDate) {
+      const isToday = st.nextLessonDate === st.today;
+      nextBlock = `
+        <div class="lbl">${t('nextLesson')} · ${t('lessonN', { n: st.completed + 1 })}</div>
+        <div class="val">
+          <span class="date-pick">📅 ${fmtDay(st.nextLessonDate)} <span class="edit-mark">✎</span>
+            <input type="date" value="${st.nextLessonDate}" min="${st.today}" data-action="next-date" aria-label="${t('nextLesson')}">
+          </span>
+        </div>
+        <div class="hint-line">${t('tapToChange')}</div>
+        <button class="btn btn-secondary small skip-btn" data-action="skip-date" data-date="${st.nextLessonDate}">🚫 ${isToday ? t('noLessonToday') : t('noLessonThisDay')}</button>`;
+    } else {
+      nextBlock = `<div class="lbl">${t('nextLesson')}</div><div class="val">${t('noDaysLeft')}</div>`;
+    }
 
     return `
       <h1 class="large-title">📚 ${esc(s.courseName)}</h1>
@@ -546,12 +601,7 @@
           </div>
         </div>
         <div class="divider"></div>
-        <div class="next-row">
-          <div>
-            <div class="lbl">${st.isDone ? t('finished') : t('nextLesson')}</div>
-            <div class="val">${nextText}</div>
-          </div>
-        </div>
+        <div class="next-block">${nextBlock}</div>
       </div>
 
       ${st.lastCompletion ? `<p class="footnote">${t('lastCompleted', { n: state.completions.length, date: fmtShort(st.lastCompletion.date) })}</p>` : ''}
@@ -595,8 +645,9 @@
     const first = new Date(y, m, 1);
     const daysInMonth = new Date(y, m + 1, 0).getDate();
     const lead = (first.getDay() + 6) % 7; // Monday-first offset
-    const scheduleIndex = new Map(st.schedule.map((d, i) => [d, i + 1]));
+    const scheduleIndex = new Map(st.schedule.map((d, i) => [d, st.completed + i + 1]));
     const completedDates = new Set(state.completions.map((c) => c.date));
+    const skipped = new Set(state.skipped);
 
     let cells = '';
     for (let i = 0; i < lead; i++) cells += '<div class="cal-cell"></div>';
@@ -605,7 +656,8 @@
       const cls = ['cal-day'];
       if (iso === st.today) cls.push('today');
       if (completedDates.has(iso)) cls.push('completed');
-      else if (scheduleIndex.has(iso)) cls.push(iso < st.today ? 'missed' : 'upcoming');
+      else if (skipped.has(iso)) cls.push('skipped');
+      else if (scheduleIndex.has(iso)) cls.push('upcoming');
       if (ui.calSelected === iso) cls.push('selected');
       cells += `<div class="cal-cell"><button class="${cls.join(' ')}" data-action="cal-select" data-date="${iso}">${d}</button></div>`;
     }
@@ -615,11 +667,16 @@
       const iso = ui.calSelected;
       const doneHere = state.completions.map((c, i) => ({ ...c, n: i + 1 })).filter((c) => c.date === iso);
       const n = scheduleIndex.get(iso);
-      let status;
+      let status, action = '';
       if (doneHere.length) status = t('calCompleted', { list: doneHere.map((c) => t('lessonN', { n: c.n })).join(', ') });
-      else if (n) status = iso < st.today ? t('calMissed', { n }) : t('calUpcoming', { n });
-      else status = t('calNone');
-      detail = `<div class="card cal-detail"><div class="d">${fmtLong(iso)}</div><div class="s">${status}</div></div>`;
+      else if (skipped.has(iso)) {
+        status = t('calSkipped');
+        if (iso >= st.today) action = `<button class="btn btn-secondary small" data-action="unskip-date" data-date="${iso}">↩︎ ${t('restoreLesson')}</button>`;
+      } else if (n) {
+        status = t('calUpcoming', { n });
+        action = `<button class="btn btn-secondary small" data-action="skip-date" data-date="${iso}">🚫 ${iso === st.today ? t('noLessonToday') : t('noLessonThisDay')}</button>`;
+      } else status = t('calNone');
+      detail = `<div class="card cal-detail"><div class="d">${fmtLong(iso)}</div><div class="s">${status}</div>${action ? `<div class="sp"></div>${action}` : ''}</div>`;
     }
 
     return `
@@ -641,7 +698,7 @@
         <div class="legend">
           <span><i class="c"></i>${t('completed')}</span>
           <span><i class="u"></i>${t('upcoming')}</span>
-          <span><i class="m"></i>${t('missed')}</span>
+          <span><i class="m"></i>${t('noLesson')}</span>
         </div>
       </div>
       ${detail}
@@ -761,7 +818,7 @@
       <div class="group">
         <div class="row"><div class="row-label">${t('install')}<span class="hint">${t('installHint')}</span></div></div>
         <button class="row-btn" data-action="show-welcome">${t('showWelcome')}</button>
-        <div class="row"><div class="row-label">${t('version')}</div><div class="row-value">1.1</div></div>
+        <div class="row"><div class="row-label">${t('version')}</div><div class="row-value">1.2</div></div>
       </div>
     `;
   }
@@ -785,6 +842,7 @@
     const st = computeStats();
     if (st.isDone) return;
     state.completions.push({ id: uid(), date: todayISO(), completedAt: new Date().toISOString() });
+    state.nextLessonDate = ''; // the chosen next-lesson date is used up
     commit();
     const n = state.completions.length;
     const after = computeStats();
@@ -866,7 +924,28 @@
   function resetProgress() {
     if (!confirm(t('resetProgressConfirm'))) return;
     state.completions = [];
+    state.skipped = [];
+    state.nextLessonDate = '';
     commit();
+  }
+
+  function skipDate(iso) {
+    if (!confirm(t('skipConfirm', { date: fmtLong(iso) }))) return;
+    if (!state.skipped.includes(iso)) state.skipped.push(iso);
+    if (state.nextLessonDate === iso) state.nextLessonDate = '';
+    commit();
+    showToast(t('skippedToast', { date: fmtShort(iso) }), { label: t('undo'), onClick: () => unskipDate(iso) });
+  }
+  function unskipDate(iso) {
+    state.skipped = state.skipped.filter((d) => d !== iso);
+    commit();
+  }
+  function setNextLessonDate(iso) {
+    if (!isValidISO(iso) || iso < todayISO()) return;
+    state.nextLessonDate = iso;
+    state.skipped = state.skipped.filter((d) => d !== iso);
+    commit();
+    showToast(t('nextMoved', { date: fmtDay(iso) }));
   }
   function resetAll() {
     if (!confirm(t('resetAllConfirm'))) return;
@@ -906,6 +985,8 @@
       case 'import': $('#importFile').click(); break;
       case 'reset-progress': resetProgress(); break;
       case 'reset-all': resetAll(); break;
+      case 'skip-date': skipDate(el.dataset.date); break;
+      case 'unskip-date': unskipDate(el.dataset.date); break;
       default: break;
     }
   });
@@ -916,6 +997,7 @@
       updateSetting(el.dataset.setting, el.type === 'checkbox' ? el.checked : el.value);
       return;
     }
+    if (el.dataset.action === 'next-date') { setNextLessonDate(el.value); return; }
     if (el.dataset.action === 'edit-date') {
       const c = state.completions.find((x) => x.id === el.dataset.id);
       if (c && isValidISO(el.value)) { c.date = el.value; commit(); }
