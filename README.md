@@ -54,7 +54,7 @@ courseEndDate    = startDate'dan boshlab, tanlangan dars kunlari bo'yicha
                    totalLessons-nchi darsning sanasi (yoki Settings'da qo'lda)
 ```
 
-**Default:** Study Course · 28 Sep 2026 · 66 dars · 2 soat · Mon, Wed, Fri (haftasiga 3) → kurs tugashi avtomatik hisoblanadi.
+**Default:** Study Course · 29 Sep 2026 · 66 dars · 2 soat · Se, Pa, Sh (haftasiga 3) → kurs tugashi avtomatik hisoblanadi.
 
 ## 🛠 Texnik
 

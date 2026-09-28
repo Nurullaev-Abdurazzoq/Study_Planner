@@ -24,10 +24,10 @@
 
   const DEFAULT_SETTINGS = {
     courseName: 'Study Course',
-    startDate: '2026-09-28',
+    startDate: '2026-09-29',
     totalLessons: 66,
     lessonDuration: 2,        // hours per lesson
-    studyDays: [1, 3, 5],     // Mon, Wed, Fri
+    studyDays: [2, 4, 6],     // Tue, Thu, Sat
     endDateMode: 'auto',      // 'auto' = computed from schedule, 'manual' = endDate below
     endDate: '',
     appearance: 'system',     // 'system' | 'light' | 'dark'
@@ -336,6 +336,16 @@
 
   function normalize(obj) {
     const s = Object.assign({}, DEFAULT_SETTINGS, (obj && obj.settings) || {});
+    // One-time migration: version 1 shipped with Mon/Wed/Fri from 28 Sep 2026.
+    // If those defaults were never changed, move to the current defaults.
+    if (!s.settingsVersion) {
+      const oldDays = Array.isArray(s.studyDays) && s.studyDays.length === 3 && [1, 3, 5].every((d) => s.studyDays.includes(d));
+      if (oldDays && s.startDate === '2026-09-28') {
+        s.studyDays = [...DEFAULT_SETTINGS.studyDays];
+        s.startDate = DEFAULT_SETTINGS.startDate;
+      }
+      s.settingsVersion = 2;
+    }
     s.courseName = String(s.courseName || '').trim() || DEFAULT_SETTINGS.courseName;
     s.startDate = isValidISO(s.startDate) ? s.startDate : DEFAULT_SETTINGS.startDate;
     s.totalLessons = clampInt(s.totalLessons, 1, 9999, DEFAULT_SETTINGS.totalLessons);
@@ -818,7 +828,7 @@
       <div class="group">
         <div class="row"><div class="row-label">${t('install')}<span class="hint">${t('installHint')}</span></div></div>
         <button class="row-btn" data-action="show-welcome">${t('showWelcome')}</button>
-        <div class="row"><div class="row-label">${t('version')}</div><div class="row-value">1.2</div></div>
+        <div class="row"><div class="row-label">${t('version')}</div><div class="row-value">1.3</div></div>
       </div>
     `;
   }
