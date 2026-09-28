@@ -531,3 +531,20 @@ h1, h2, h3, p { margin: 0; }
 .notice h2 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
 .notice p { font-size: 15px; line-height: 1.45; color: var(--text-2); margin-bottom: 12px; }
 .btn-danger.small { background: var(--red-soft); }
+
+/* ---------- Modules ---------- */
+.module-list { display: grid; gap: 12px; margin-top: 10px; }
+.module { padding: 10px 12px; border-radius: 12px; background: var(--card-2); }
+.module.current { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.module.done { opacity: 0.75; }
+.module-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.module-name { font-size: 15px; font-weight: 600; line-height: 1.3; }
+.module-n { color: var(--accent); margin-right: 4px; }
+.module.done .module-n { color: var(--green); }
+.module-count { font-size: 14px; font-weight: 600; color: var(--text-2); flex: none; }
+.module.done .module-count { color: var(--green); }
+.progress.thin { height: 6px; border-radius: 3px; margin-top: 8px; }
+.finish-btn { margin-top: 8px; font-size: 13px; padding: 6px 10px; background: var(--card); }
+.module-edit-head { display: flex; justify-content: space-between; align-items: center; }
+.module-edit-lessons { display: flex; justify-content: space-between; align-items: center; }
+.module-edit-lessons input[type="number"] { max-width: 80px; }

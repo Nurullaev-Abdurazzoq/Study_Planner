@@ -15,7 +15,7 @@
   'use strict';
 
   /* ---------- 1. Constants & defaults ---------- */
-  const APP_VERSION = '1.5';
+  const APP_VERSION = '1.6';
   const STORAGE_KEY = 'studyCourseTracker.v1';
   const UI_KEY = 'studyCourseTracker.ui';
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -24,7 +24,7 @@
   const WEEKDAY_IDS = [1, 2, 3, 4, 5, 6, 0];
 
   const DEFAULT_SETTINGS = {
-    courseName: 'Study Course',
+    courseName: 'CCNA',
     startDate: '2026-09-29',
     totalLessons: 66,
     lessonDuration: 2,        // hours per lesson
@@ -35,6 +35,14 @@
     lang: 'en',               // 'en' | 'uz'
     courseNote: '',           // free text shown on the Home screen (empty = default text)
   };
+
+  // Lessons go through the modules in order: module 1 first, then module 2, …
+  const DEFAULT_MODULES = [
+    { name: 'Network Fundamentals', lessons: 17 },
+    { name: 'Network Access (Switching, VLAN, Wireless)', lessons: 17 },
+    { name: 'IP Connectivity & IP Services (Routing)', lessons: 16 },
+    { name: 'Security Fundamentals & Automation', lessons: 16 },
+  ];
 
   /* ---------- 2. Translations ---------- */
   const L = {
@@ -53,6 +61,22 @@
 
       started: 'Started {date}',
       infoTitle: 'About this course',
+      modules: 'Modules',
+      currentModule: 'Current module',
+      moduleN: 'Module {n}',
+      moduleDone: 'Done',
+      moduleUpcoming: 'Not started',
+      moduleToast: '🎉 Module {n} completed: {name}',
+      modulesDesc: 'The course is split into modules. Lessons go in order: module 1 first, then module 2, and so on. Total lessons = sum of all modules.',
+      moduleName: 'Module name',
+      moduleLessons: 'Lessons in this module',
+      addModule: 'Add a module',
+      removeModuleConfirm: 'Remove module "{name}"? Its lessons are removed from the course.',
+      finishModule: 'Finish this module now',
+      finishModuleConfirm: 'Finish "{name}" now with {done} lessons? Its remaining {left} lessons move to the next module.',
+      finishModuleConfirmLast: 'Finish "{name}" now with {done} lessons? Its remaining {left} lessons are removed from the course.',
+      totalFromModules: 'Sum of the modules below',
+      infoModules: '{n} modules',
       earlyTitle: '⚠️ Lesson marked before the course start',
       earlyText: '{list} — but the course starts on {start}. If this was a test tap, remove it.',
       earlyRemove: 'Remove',
@@ -210,6 +234,22 @@
 
       started: '{date} dan boshlangan',
       infoTitle: 'Kurs haqida',
+      modules: 'Modullar',
+      currentModule: 'Hozirgi modul',
+      moduleN: '{n}-modul',
+      moduleDone: 'Tugallandi',
+      moduleUpcoming: 'Boshlanmagan',
+      moduleToast: '🎉 {n}-modul tugallandi: {name}',
+      modulesDesc: "Kurs modullarga bo'lingan. Darslar tartib bilan ketadi: avval 1-modul, keyin 2-modul va hokazo. Jami darslar = barcha modullar yig'indisi.",
+      moduleName: 'Modul nomi',
+      moduleLessons: 'Bu moduldagi darslar',
+      addModule: "Modul qo'shish",
+      removeModuleConfirm: '"{name}" moduli o\'chirilsinmi? Uning darslari kursdan olib tashlanadi.',
+      finishModule: 'Bu modulni hozir yakunlash',
+      finishModuleConfirm: '"{name}" moduli {done} dars bilan hozir yakunlansinmi? Qolgan {left} dars keyingi modulga o\'tadi.',
+      finishModuleConfirmLast: '"{name}" moduli {done} dars bilan hozir yakunlansinmi? Qolgan {left} dars kursdan olib tashlanadi.',
+      totalFromModules: "Quyidagi modullar yig'indisi",
+      infoModules: '{n} modul',
       earlyTitle: '⚠️ Kurs boshlanishidan oldin belgilangan dars',
       earlyText: "{list} — lekin kurs {start} kuni boshlanadi. Agar sinov uchun bosilgan bo'lsa, o'chiring.",
       earlyRemove: "O'chirish",
@@ -402,6 +442,16 @@
       if (s.startDate === '2026-09-28') s.startDate = DEFAULT_SETTINGS.startDate;
       s.settingsVersion = 2;
     }
+    let modules = (Array.isArray(obj && obj.modules) ? obj.modules : [])
+      .filter((m) => m && typeof m.name === 'string')
+      .map((m) => ({ id: m.id || uid(), name: m.name.trim().slice(0, 60) || 'Module', lessons: clampInt(m.lessons, 1, 999, 1) }));
+    if (s.settingsVersion < 3) {
+      // Version 1.6 introduced modules: give the untouched default course the CCNA modules.
+      if (!modules.length && s.totalLessons === 66) modules = DEFAULT_MODULES.map((m) => ({ id: uid(), ...m }));
+      if (s.courseName === 'Study Course') s.courseName = DEFAULT_SETTINGS.courseName;
+      s.settingsVersion = 3;
+    }
+    if (modules.length) s.totalLessons = modules.reduce((a, m) => a + m.lessons, 0);
     s.courseName = String(s.courseName || '').trim() || DEFAULT_SETTINGS.courseName;
     s.startDate = isValidISO(s.startDate) ? s.startDate : DEFAULT_SETTINGS.startDate;
     s.totalLessons = clampInt(s.totalLessons, 1, 9999, DEFAULT_SETTINGS.totalLessons);
@@ -423,7 +473,7 @@
     const skipped = Array.isArray(obj && obj.skipped) ? [...new Set(obj.skipped.filter(isValidISO))] : [];
     const nextLessonDate = obj && isValidISO(obj.nextLessonDate) ? obj.nextLessonDate : '';
 
-    return { settings: s, completions, skipped, nextLessonDate };
+    return { settings: s, completions, skipped, nextLessonDate, modules };
   }
 
   function loadState() {
@@ -526,7 +576,20 @@
     const expectedByToday = plannedSchedule(s, state.skipped).filter((d) => d < today).length;
     const nextLessonDate = schedule.length ? schedule[0] : null;
 
+    // Modules: lesson ranges in order, with how many lessons of each are done.
+    let start = 1;
+    const modules = state.modules.map((m, i) => {
+      const done = Math.max(0, Math.min(m.lessons, completed - start + 1));
+      const mod = { ...m, n: i + 1, start, end: start + m.lessons - 1, done, isDone: done >= m.lessons, isCurrent: false };
+      start += m.lessons;
+      return mod;
+    });
+    const currentModule = modules.find((m) => !m.isDone) || null;
+    if (currentModule) currentModule.isCurrent = true;
+    const moduleOfLesson = (n) => modules.find((m) => n >= m.start && n <= m.end) || null;
+
     return {
+      modules, currentModule, moduleOfLesson,
       today, schedule, total, completed, remaining, percent,
       totalHours, completedHours, remainingHours,
       autoEndDate, endDate, daysRemaining, weeksRemaining, monthsRemaining,
@@ -605,6 +668,24 @@
       </div>`;
   }
 
+  function modulesCard(st) {
+    if (!st.modules.length) return '';
+    const rows = st.modules.map((m) => `
+      <div class="module ${m.isCurrent ? 'current' : ''} ${m.isDone ? 'done' : ''}">
+        <div class="module-head">
+          <div class="module-name"><span class="module-n">${t('moduleN', { n: m.n })}</span> ${esc(m.name)}</div>
+          <div class="module-count num">${m.isDone ? '✓ ' + t('moduleDone') : `${m.done} / ${m.lessons}`}</div>
+        </div>
+        <div class="progress thin ${m.isDone ? 'done' : ''}"><i style="width:${(m.done / m.lessons * 100).toFixed(1)}%"></i></div>
+        ${m.isCurrent && m.done > 0 ? `<button class="text-btn finish-btn" data-action="finish-module" data-id="${m.id}">⏭ ${t('finishModule')}</button>` : ''}
+      </div>`).join('');
+    return `
+      <div class="card">
+        <div class="card-label">${t('modules')}${st.currentModule ? ` · ${t('currentModule')}: <b>${t('moduleN', { n: st.currentModule.n })}</b>` : ''}</div>
+        <div class="module-list">${rows}</div>
+      </div>`;
+  }
+
   function renderDashboard(st) {
     const s = state.settings;
     const days = s.studyDays.length === 7 ? '' : ' · ' + WEEKDAY_IDS.filter((id) => s.studyDays.includes(id)).map((id) => wd(id)[0]).join(', ');
@@ -643,7 +724,7 @@
     } else if (st.nextLessonDate) {
       const isToday = st.nextLessonDate === st.today;
       nextBlock = `
-        <div class="lbl">${t('nextLesson')} · ${t('lessonN', { n: st.completed + 1 })}</div>
+        <div class="lbl">${t('nextLesson')} · ${t('lessonN', { n: st.completed + 1 })}${st.moduleOfLesson(st.completed + 1) ? ` · ${t('moduleN', { n: st.moduleOfLesson(st.completed + 1).n })}` : ''}</div>
         <div class="val">
           <span class="date-pick">📅 ${fmtDay(st.nextLessonDate)} <span class="edit-mark">✎</span>
             <input type="date" value="${st.nextLessonDate}" min="${st.today}" data-action="next-date" aria-label="${t('nextLesson')}">
@@ -662,6 +743,7 @@
       ${welcomeCard()}
       ${earlyNotice(st)}
       ${heroOrCelebrate}
+      ${modulesCard(st)}
 
       <div class="grid-2">
         <div class="card"><div class="tile-value num">${st.total}</div><div class="tile-label">${t('totalLessons')}</div></div>
@@ -690,7 +772,7 @@
         <ul class="info-list">
           <li>📅 ${t('infoDays', { n: s.studyDays.length, days: WEEKDAY_IDS.filter((id) => s.studyDays.includes(id)).map((id) => wd(id)[1]).join(', ') })}</li>
           <li>⏱ ${esc(s.courseNote || t('infoNoteDefault'))}</li>
-          <li>📚 ${t('infoTotal', { lessons: cnt(st.total, 'lesson'), hours: cnt(fmtNum(st.totalHours), 'hour') })}</li>
+          <li>📚 ${t('infoTotal', { lessons: cnt(st.total, 'lesson'), hours: cnt(fmtNum(st.totalHours), 'hour') })}${st.modules.length ? ` · ${t('infoModules', { n: st.modules.length })}` : ''}</li>
           <li>🏁 ${t('infoLength', { a: fmtShort(s.startDate), b: fmtShort(st.endDate) })}</li>
         </ul>
       </div>
@@ -716,6 +798,7 @@
           <div class="row hist-row">
             <div class="row-label">
               <div class="lesson">${t('lessonN', { n: c.n })} <span class="badge">${t('completed')}</span></div>
+              ${st.moduleOfLesson(c.n) ? `<div class="hint">${t('moduleN', { n: st.moduleOfLesson(c.n).n })} · ${esc(st.moduleOfLesson(c.n).name)}</div>` : ''}
               <label class="date-wrap">📅 <input class="date-input" type="date" value="${c.date}" data-action="edit-date" data-id="${c.id}" aria-label="Completion date"></label>
             </div>
             <button class="text-btn danger" data-action="remove" data-id="${c.id}">${t('remove')}</button>
@@ -829,6 +912,11 @@
         ${row(t('expectedByToday'), st.expectedByToday, t('expectedHint'))}
       </div>
 
+      ${st.modules.length ? `<div class="section-title">${t('modules')}</div>
+      <div class="group">
+        ${st.modules.map((m) => row(`${t('moduleN', { n: m.n })}`, `${m.done} / ${m.lessons}`, `${esc(m.name)}${m.isDone ? ' · ✓ ' + t('moduleDone') : m.isCurrent ? ' · ' + t('currentModule') : ''}`)).join('')}
+      </div>` : ''}
+
       <div class="section-title">${t('hoursTitle')}</div>
       <div class="group">
         ${row(t('totalHours'), cnt(fmtNum(st.totalHours), 'hour'), t('totalHoursHint'))}
@@ -871,12 +959,26 @@
           <input type="text" value="${esc(s.courseName)}" data-setting="courseName" maxlength="40" autocomplete="off"></div>
         <div class="row"><div class="row-label">${t('startDate')}<span class="hint">${t('startDateHint')}</span></div>
           <input type="date" value="${s.startDate}" data-setting="startDate"></div>
-        <div class="row"><div class="row-label">${t('totalLessons')}<span class="hint">${t('totalLessonsHint', { n: state.completions.length })}</span></div>
-          <input type="number" inputmode="numeric" min="1" max="9999" value="${s.totalLessons}" data-setting="totalLessons"></div>
+        ${state.modules.length
+          ? `<div class="row"><div class="row-label">${t('totalLessons')}<span class="hint">${t('totalFromModules')}</span></div><div class="row-value strong num">${s.totalLessons}</div></div>`
+          : `<div class="row"><div class="row-label">${t('totalLessons')}<span class="hint">${t('totalLessonsHint', { n: state.completions.length })}</span></div>
+          <input type="number" inputmode="numeric" min="1" max="9999" value="${s.totalLessons}" data-setting="totalLessons"></div>`}
         <div class="row"><div class="row-label">${t('lessonDuration')}<span class="hint">${t('lessonDurationHint')}</span></div>
           <input type="number" inputmode="decimal" min="0.25" max="24" step="0.25" value="${s.lessonDuration}" data-setting="lessonDuration"></div>
         <div class="row stacked"><div class="row-label">${t('courseNote')}<span class="hint">${t('courseNoteHint')}</span></div>
           <input type="text" value="${esc(s.courseNote)}" placeholder="${esc(t('infoNoteDefault'))}" data-setting="courseNote" maxlength="80" autocomplete="off"></div>
+      </div>
+
+      <div class="section-title">${t('modules')}</div>
+      <p class="section-desc">${t('modulesDesc')}</p>
+      <div class="group">
+        ${state.modules.map((m, i) => `
+        <div class="row stacked module-edit">
+          <div class="module-edit-head"><b>${t('moduleN', { n: i + 1 })}</b><button class="text-btn danger" data-action="remove-module" data-id="${m.id}">${t('remove')}</button></div>
+          <input type="text" value="${esc(m.name)}" data-mod-id="${m.id}" data-mod-field="name" maxlength="60" autocomplete="off" aria-label="${t('moduleName')}">
+          <div class="module-edit-lessons"><span class="hint">${t('moduleLessons')}</span><input type="number" inputmode="numeric" min="1" max="999" value="${m.lessons}" data-mod-id="${m.id}" data-mod-field="lessons"></div>
+        </div>`).join('')}
+        <button class="row-btn" data-action="add-module">＋ ${t('addModule')}</button>
       </div>
 
       <div class="section-title">${t('weeklySchedule')}</div>
@@ -949,7 +1051,10 @@
     commit();
     const n = state.completions.length;
     const after = computeStats();
-    showToast(after.isDone ? t('toastAllDone', { n }) : t('toastDone', { n, left: cnt(after.remaining, 'lesson') }), { label: t('undo'), onClick: undoLast });
+    const mod = after.moduleOfLesson(n);
+    let msg = after.isDone ? t('toastAllDone', { n }) : t('toastDone', { n, left: cnt(after.remaining, 'lesson') });
+    if (!after.isDone && mod && mod.isDone && mod.end === n) msg = t('moduleToast', { n: mod.n, name: mod.name });
+    showToast(msg, { label: t('undo'), onClick: undoLast });
   }
 
   function undoLast() {
@@ -1044,6 +1149,44 @@
     state.skipped = state.skipped.filter((d) => d !== iso);
     commit();
   }
+  function syncTotalFromModules() {
+    if (state.modules.length) state.settings.totalLessons = state.modules.reduce((a, m) => a + m.lessons, 0);
+  }
+  function updateModule(id, field, raw) {
+    const m = state.modules.find((x) => x.id === id);
+    if (!m) return;
+    if (field === 'name') m.name = String(raw).trim().slice(0, 60) || m.name;
+    if (field === 'lessons') m.lessons = clampInt(raw, 1, 999, m.lessons);
+    syncTotalFromModules();
+    commit();
+  }
+  function addModule() {
+    state.modules.push({ id: uid(), name: t('moduleN', { n: state.modules.length + 1 }), lessons: 10 });
+    syncTotalFromModules();
+    commit();
+  }
+  function removeModule(id) {
+    const m = state.modules.find((x) => x.id === id);
+    if (!m || !confirm(t('removeModuleConfirm', { name: m.name }))) return;
+    state.modules = state.modules.filter((x) => x.id !== id);
+    syncTotalFromModules();
+    commit();
+  }
+  // Close the current module early: its unfinished lessons move to the next module (or are dropped).
+  function finishModule(id) {
+    const st = computeStats();
+    const m = st.modules.find((x) => x.id === id);
+    if (!m || m.isDone || m.done === 0) return;
+    const idx = state.modules.findIndex((x) => x.id === id);
+    const left = m.lessons - m.done;
+    const isLast = idx === state.modules.length - 1;
+    if (!confirm(t(isLast ? 'finishModuleConfirmLast' : 'finishModuleConfirm', { name: m.name, done: m.done, left }))) return;
+    state.modules[idx].lessons = m.done;
+    if (!isLast) state.modules[idx + 1].lessons += left;
+    syncTotalFromModules();
+    commit();
+    showToast(t('moduleToast', { n: m.n, name: m.name }));
+  }
   function setNextLessonDate(iso) {
     if (!isValidISO(iso) || iso < todayISO()) return;
     state.nextLessonDate = iso;
@@ -1090,6 +1233,9 @@
       case 'reset-progress': resetProgress(); break;
       case 'reset-all': resetAll(); break;
       case 'skip-date': skipDate(el.dataset.date); break;
+      case 'add-module': addModule(); break;
+      case 'remove-module': removeModule(el.dataset.id); break;
+      case 'finish-module': finishModule(el.dataset.id); break;
       case 'remove-early': state.completions = state.completions.filter((c) => c.date >= state.settings.startDate); state.nextLessonDate = ''; commit(); break;
       case 'unskip-date': unskipDate(el.dataset.date); break;
       default: break;
@@ -1102,6 +1248,7 @@
       updateSetting(el.dataset.setting, el.type === 'checkbox' ? el.checked : el.value);
       return;
     }
+    if (el.dataset.modId) { updateModule(el.dataset.modId, el.dataset.modField, el.value); return; }
     if (el.dataset.action === 'next-date') { setNextLessonDate(el.value); return; }
     if (el.dataset.action === 'edit-date') {
       const c = state.completions.find((x) => x.id === el.dataset.id);

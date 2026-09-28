@@ -35,11 +35,11 @@ Birinchi ochilganda qisqa **«Xush kelibsiz»** kartochkasi chiqadi (qanday ishl
 
 | Ekran | Nima bor |
 |---|---|
-| **Home** | Katta progress (1 / 66, %), progress bar, Total / Remaining / Completed / Hours remaining, kurs tugash sanasi va qolgan vaqt (oy · hafta · kun), keyingi dars sanasi, "On track / behind / ahead", **Complete Lesson** tugmasi (Undo bilan) |
+| **Home** | Katta progress, **Modullar** kartasi (hozirgi modul, har modul progressi, modulni erta yakunlash) (1 / 66, %), progress bar, Total / Remaining / Completed / Hours remaining, kurs tugash sanasi va qolgan vaqt (oy · hafta · kun), keyingi dars sanasi, "On track / behind / ahead", **Complete Lesson** tugmasi (Undo bilan) |
 | **History** | Har bir tugallangan dars sanasi bilan. Sanani o'zgartirish, xato bosilganini o'chirish, "Undo last" |
 | **Calendar** | Dars kunlari belgilangan: ✓ Completed (yashil), ○ Upcoming (ko'k), Missed (kulrang). Kunni bossangiz tafsilot |
 | **Stats** | Total / Completed / Remaining lessons, %, Total / Completed / Remaining hours, Current streak, Course days remaining |
-| **Settings** | Til (English / O'zbekcha), Ko'rinish (Tizim / Yorug' / Qorong'i), Course name, Start date, Total lessons, Lesson duration, Study days (haftaning kunlari), Course end date (auto / qo'lda), Nusxa saqlash / tiklash, Qaytadan boshlash |
+| **Settings** | **Modullar** (nomi, darslar soni, qo'shish/o'chirish), Til (English / O'zbekcha), Ko'rinish (Tizim / Yorug' / Qorong'i), Course name, Start date, Total lessons, Lesson duration, Study days (haftaning kunlari), Course end date (auto / qo'lda), Nusxa saqlash / tiklash, Qaytadan boshlash |
 
 Kurs tugaganda Home ekranida **🎉 Course Completed** chiqadi.
 
@@ -54,7 +54,7 @@ courseEndDate    = startDate'dan boshlab, tanlangan dars kunlari bo'yicha
                    totalLessons-nchi darsning sanasi (yoki Settings'da qo'lda)
 ```
 
-**Default:** Study Course · 29 Sep 2026 · 66 dars · 2 soat · Se, Pa, Sh (haftasiga 3) → kurs tugashi avtomatik hisoblanadi.
+**Default:** CCNA · 4 modul (17 + 17 + 16 + 16 dars) · 29 Sep 2026 · 66 dars · 2 soat · Se, Pa, Sh (haftasiga 3) → kurs tugashi avtomatik hisoblanadi.
 
 ## 🛠 Texnik
 
